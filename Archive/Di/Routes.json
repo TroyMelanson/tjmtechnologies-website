@@ -1,0 +1,17 @@
+{
+  "routes": [
+    {
+      "route": "/*",
+      "serve": "/index.html",
+      "statusCode": 200
+    }
+  ],
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/static/*", "/images/*", "/favicon.ico"]
+  }
+}
+
+git add routes.json
+git commit -m "Fix: added Azure routes.json for SPA redirect"
+git push

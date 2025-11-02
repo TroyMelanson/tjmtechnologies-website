@@ -1,0 +1,961 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Digital MAR — Dashboard</title>
+  <style>
+    :root{--blue:#0b60d1;--muted:#666;--card:#fff}
+    body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial;margin:0;background:#f4f6f8;color:#111}
+    header{background:var(--blue);color:#fff;padding:12px 18px;display:flex;align-items:center;justify-content:space-between}
+    .container{max-width:1100px;margin:18px auto;padding:18px;background:var(--card);border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.06)}
+    h1{margin:0;font-size:20px}
+    label{display:block;margin-top:8px;font-size:0.95rem}
+    input,select,button,textarea{padding:8px;border-radius:6px;border:1px solid #d1d5db;font-size:1rem}
+    button{cursor:pointer;background:var(--blue);color:white;border:none;padding:8px 12px;border-radius:6px}
+    .small{font-size:0.9rem;color:var(--muted)}
+    .muted{color:var(--muted)}
+    .hidden{display:none}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{padding:8px;border-bottom:1px solid #eee;text-align:left}
+    .pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#eef2ff;color:var(--blue);font-weight:600}
+    .inlineLink{background:none;border:none;color:var(--blue);cursor:pointer;padding:0;font-size:0.9rem}
+    .flex{display:flex;gap:12px;align-items:center}
+    .col{display:flex;flex-direction:column;gap:8px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+    .card{background:#fff;padding:12px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+    .calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+    .calCell{min-height:72px;padding:6px;border-radius:6px;background:#fff;border:1px solid #ececec}
+    .calHeader{font-weight:700;text-align:center}
+    /* Stats */
+    .stats { display:flex; gap:12px; margin-bottom:12px; }
+    .stat { background:#fff; padding:12px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,.04); min-width:140px; text-align:center }
+    .stat .num { font-size:20px; font-weight:700; color:var(--blue) }
+    .row { display:flex; gap:12px; align-items:flex-start; }
+    .col-2 { flex:1 }
+    .col-1 { width:360px }
+    @media (max-width:900px){ .row { flex-direction:column } .col-1{width:100%} }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Digital MAR — Dashboard</h1>
+    <div style="display:flex;gap:12px;align-items:center">
+      <div id="whoami" class="muted small">Not signed in</div>
+      <button id="btnSignOut" class="hidden">Sign out</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Top: user info + stats -->
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div id="userInfo" class="muted small"></div>
+        <div id="userRole" class="small"></div>
+      </div>
+      <div class="small muted">Assigned homes: <span id="userHomes"></span></div>
+    </div>
+
+    <hr/>
+
+    <div class="stats" id="statsRow">
+      <div class="stat"><div class="small muted">Homes</div><div class="num" id="statHomes">0</div></div>
+      <div class="stat"><div class="small muted">Residents</div><div class="num" id="statResidents">0</div></div>
+      <div class="stat"><div class="small muted">Medications</div><div class="num" id="statMeds">0</div></div>
+      <div class="stat"><div class="small muted">Admin events</div><div class="num" id="statAdmins">0</div></div>
+    </div>
+
+    <div class="row">
+      <div class="col-2">
+        <!-- Owner / Pharmacy / Nurse full panels -->
+        <div id="ownerSection" class="hidden card">
+          <h3>Owner Dashboard</h3>
+          <p class="small">Manage homes, residents, and assign doctors.</p>
+
+          <div class="grid">
+            <div>
+              <label for="ownerHomeSelector">Home (owner-managed)</label>
+              <select id="ownerHomeSelector"></select>
+            </div>
+            <div>
+              <label for="ownerResidentName">Resident name</label>
+              <input id="ownerResidentName" placeholder="e.g. John Doe" />
+            </div>
+            <div>
+              <label for="ownerResidentDoctor">Resident doctor</label>
+              <input id="ownerResidentDoctor" placeholder="e.g. Dr. Smith (clinic@hospital.ca)" />
+            </div>
+            <div style="align-self:end">
+              <button id="btnOwnerAddResident">Add Resident</button>
+            </div>
+          </div>
+
+          <h4 style="margin-top:12px">Residents</h4>
+          <div id="ownerResidentsList" class="small muted"></div>
+        </div>
+
+        <div id="pharmacySection" class="hidden card" style="margin-top:12px">
+          <h3>Pharmacy Dashboard</h3>
+          <p class="small">Add medications (including dose and instructions) for residents in homes you serve.</p>
+
+          <div class="grid">
+            <div>
+              <label for="pharmacyHomeSelector">LTCH</label>
+              <select id="pharmacyHomeSelector"></select>
+            </div>
+            <div>
+              <label for="pharmacyResidentSelector">Resident</label>
+              <select id="pharmacyResidentSelector"></select>
+            </div>
+            <div>
+              <label for="pharmacyMedName">Medication name</label>
+              <input id="pharmacyMedName" placeholder="e.g. Metformin 500mg" />
+            </div>
+            <div>
+              <label for="pharmacyMedDose">Dose / Quantity</label>
+              <input id="pharmacyMedDose" placeholder="e.g. 500 mg / once daily" />
+            </div>
+            <div style="grid-column:1/ -1">
+              <label for="pharmacyMedSchedule">Schedule / Notes</label>
+              <textarea id="pharmacyMedSchedule" placeholder="Optional schedule or special instructions"></textarea>
+            </div>
+            <div style="align-self:end">
+              <button id="btnPharmacyAddMed">Add Medication</button>
+            </div>
+          </div>
+
+          <h4 style="margin-top:12px">Medications (by home)</h4>
+          <div id="pharmacyMedsList" class="small muted"></div>
+        </div>
+
+        <div id="nurseSection" class="hidden card" style="margin-top:12px">
+          <h3>Nurse Dashboard</h3>
+          <p class="small">Pick a month, select a resident, and mark doses as given.</p>
+
+          <div class="grid">
+            <div>
+              <label for="nurseHomeSelector">LTCH</label>
+              <select id="nurseHomeSelector"></select>
+            </div>
+            <div>
+              <label for="nurseResidentSelector">Resident</label>
+              <select id="nurseResidentSelector"></select>
+            </div>
+            <div>
+              <label for="nurseMonthSelect">Month / Year</label>
+              <div class="flex">
+                <select id="nurseMonthSelect"></select>
+                <select id="nurseYearSelect"></select>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:12px">
+            <div id="nurseCalendarContainer" class="card"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-1">
+        <!-- Small management card -->
+        <div class="card">
+          <h4>Manage Homes</h4>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select id="manageHomeSelector"></select>
+            <input id="manageAddHomeInput" placeholder="Add new home" />
+            <button id="btnManageAddHome">Add</button>
+          </div>
+          <hr/>
+          <div style="margin-top:8px"><button id="btnExport" class="inlineLink">Export local data (console)</button></div>
+        </div>
+
+        <div class="card" style="margin-top:12px">
+          <h4>Quick Actions</h4>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <button id="btnClearLocal">Clear Local Storage</button>
+            <button id="btnRefreshStats">Refresh Stats</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <hr />
+    <div class="small muted">Note: This is a prototype. For production, store data server-side and enforce roles server-side.</div>
+  </main>
+
+<script src="https://alcdn.msauth.net/browser/2.32.0/js/msal-browser.min.js"></script>
+
+<script>
+  // Your updated script here
+  (function(){
+    // The entire updated JavaScript code goes here
+  })();
+</script>
+
+    (function(){
+      /* -------------------- Configuration -------------------- */
+      const CLIENT_ID = "96daabf8-67b5-4dbc-9897-96ce471d4c86";
+      const TENANT_ID = "5e3ce082-696a-4477-8398-ce821728cfc8";
+      const REDIRECT_URI = "https://digitalmar.tjmtechnologies.ca/dashboard.html";
+      const POST_LOGOUT_REDIRECT_URI = "https://digitalmar.tjmtechnologies.ca/index.html";
+
+      // localStorage keys
+      const LTCH_KEY = "dm_ltch_list_v1";
+      const USERS_KEY = "dm_users_v1";
+      const DATA_KEY = "dm_data_v1";
+      const MEDS_KEY = "dm_meds_v1"; // flattened meds (for quick counts)
+      const defaultHomes = ["Manoir du Rocher","Foyer Chez Annie","Foyer McGraw"];
+
+      /* -------------------- Tiny Helpers -------------------- */
+      const $ = id => document.getElementById(id);
+      const saveJSON = (k,v) => localStorage.setItem(k, JSON.stringify(v));
+      const readJSON = (k,def=null) => {
+        try {
+          const s = localStorage.getItem(k);
+          return s ? JSON.parse(s) : def;
+        } catch(e){
+          console.error(`Error reading ${k} from localStorage:`, e);
+          return def;
+        }
+      };
+      // Simple XSS-safe text rendering
+      const escapeHTML = str => {
+        const div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+      };
+
+      /* -------------------- MSAL Configuration & Instance -------------------- */
+      const msalConfig = {
+        auth: {
+          clientId: CLIENT_ID,
+          authority: `https://login.microsoftonline.com/${TENANT_ID}`,
+          redirectUri: REDIRECT_URI
+        },
+        cache: {
+          cacheLocation: "localStorage",
+          storeAuthStateInCookie: false
+        }
+      };
+      const msalInstance = new msal.PublicClientApplication(msalConfig);
+      const LOGIN_REQUEST = { scopes: ["openid","profile","email","user.read"] }; // Define once
+
+      /* -------------------- authModule -------------------- */
+      const authModule = (function() {
+        async function signOut() {
+          // Clear only the app-specific keys (safer than wiping other localStorage)
+          localStorage.removeItem(LTCH_KEY);
+          localStorage.removeItem(USERS_KEY);
+          localStorage.removeItem(DATA_KEY);
+          localStorage.removeItem(MEDS_KEY);
+
+          // Redirect to post-logout URI. MSAL handles the actual sign-out.
+          try {
+            await msalInstance.logoutPopup({ postLogoutRedirectUri: POST_LOGOUT_REDIRECT_URI });
+          } catch(e){
+            console.warn("MSAL logout popup error (could be blocker):", e);
+            // Fallback in case of popup block or other error
+            window.location.href = POST_LOGOUT_REDIRECT_URI;
+          }
+        }
+
+        // Handle redirect promise on page load for silent token acquisition or login
+        msalInstance.handleRedirectPromise().then((response) => {
+          if (response) {
+            msalInstance.setActiveAccount(response.account);
+          }
+        }).catch((error) => {
+          console.error("MSAL redirect promise error:", error);
+        });
+
+        return { signOut, msalInstance }; // Expose msalInstance for global access if needed
+      })();
+
+      /* -------------------- dataModule (localStorage model) -------------------- */
+      const dataModule = {
+        ensureDefaults(){
+          let homes = readJSON(LTCH_KEY);
+          if (!homes || !Array.isArray(homes) || homes.length === 0) {
+            homes = defaultHomes.slice();
+            saveJSON(LTCH_KEY, homes);
+          }
+
+          if (!readJSON(USERS_KEY)) saveJSON(USERS_KEY, {});
+          let data = readJSON(DATA_KEY);
+          if (!data) data = {};
+
+          // Ensure data skeleton for each home
+          homes.forEach(h => {
+            if (!data[h]) data[h] = { residents:{}, meds:{}, administrations:{} };
+          });
+          saveJSON(DATA_KEY, data);
+          if (!readJSON(MEDS_KEY)) saveJSON(MEDS_KEY, []);
+        },
+
+        getHomes(){ return readJSON(LTCH_KEY, defaultHomes.slice()); },
+
+        addHome(name){
+          if(!name || typeof name !== 'string' || name.trim() === '') return;
+          name = name.trim(); // Trim whitespace
+          const homes = this.getHomes();
+          if (!homes.includes(name)) {
+            homes.push(name);
+            saveJSON(LTCH_KEY, homes);
+            this.ensureDefaults(); // Ensure new home gets data skeleton
+            return true; // Indicate success
+          }
+          return false; // Home already exists
+        },
+
+        saveUserRole(username, role, homes){
+          if(!username || !role) return;
+          const users = readJSON(USERS_KEY, {});
+          users[username] = { role, homes: Array.isArray(homes) ? homes : [] }; // Ensure homes is an array
+          saveJSON(USERS_KEY, users);
+          this.ensureDefaults(); // Re-check defaults as new user might imply new homes
+        },
+
+        addResident(home, name, doctor=""){
+          if (!home || !name || typeof name !== 'string' || name.trim() === '') return;
+          name = name.trim();
+          doctor = doctor.trim();
+
+          const data = readJSON(DATA_KEY, {});
+          if (!data[home]) data[home] = { residents:{}, meds:{}, administrations:{} };
+
+          if (!data[home].residents[name]) { // Only add if resident doesn't exist
+            data[home].residents[name] = { name, doctor: escapeHTML(doctor) }; // Sanitize doctor input
+            if (!data[home].meds[name]) data[home].meds[name] = [];
+            saveJSON(DATA_KEY, data);
+            return true;
+          }
+          return false; // Resident already exists
+        },
+
+        addMedication(home, resident, medObj){
+          // medObj: { name, dose, schedule, addedBy, timestamp, given:false }
+          if (!home || !resident || !medObj || !medObj.name || typeof medObj.name !== 'string' || medObj.name.trim() === '') return;
+          medObj.name = medObj.name.trim();
+
+          const data = readJSON(DATA_KEY, {});
+          if (!data[home]) data[home] = { residents:{}, meds:{}, administrations:{} };
+          if (!data[home].meds[resident]) data[home].meds[resident] = [];
+
+          // Sanitize medObj properties before saving
+          const safeMedObj = {
+            name: escapeHTML(medObj.name),
+            dose: escapeHTML(medObj.dose || ''),
+            schedule: escapeHTML(medObj.schedule || ''),
+            instructions: escapeHTML(medObj.instructions || medObj.schedule || ''), // Ensure instructions is sanitized
+            addedBy: escapeHTML(medObj.addedBy),
+            timestamp: medObj.timestamp,
+            given: false // Always false when first added
+          };
+
+          data[home].meds[resident].push(safeMedObj);
+          saveJSON(DATA_KEY, data);
+
+          // Add flattened med for quick counts
+          const meds = readJSON(MEDS_KEY, []);
+          meds.push({ home, resident, med: safeMedObj.name, ts: safeMedObj.timestamp });
+          saveJSON(MEDS_KEY, meds);
+          return true;
+        },
+
+        addAdministration(home, resident, adminEntry){
+          // adminEntry: { medName, medIndex, date, given, comment, by, timestamp }
+          if (!home || !resident || !adminEntry || !adminEntry.medName) return;
+
+          const data = readJSON(DATA_KEY, {});
+          if (!data[home]) data[home] = { residents:{}, meds:{}, administrations:{} };
+          if (!data[home].administrations) data[home].administrations = {};
+          if (!data[home].administrations[resident]) data[home].administrations[resident] = [];
+
+          // Sanitize adminEntry properties
+          const safeAdminEntry = {
+            medName: escapeHTML(adminEntry.medName),
+            medIndex: adminEntry.medIndex,
+            date: adminEntry.date,
+            given: !!adminEntry.given, // Ensure boolean
+            comment: escapeHTML(adminEntry.comment || ''),
+            by: escapeHTML(adminEntry.by),
+            timestamp: adminEntry.timestamp
+          };
+
+          data[home].administrations[resident].push(safeAdminEntry);
+          saveJSON(DATA_KEY, data);
+          return true;
+        },
+
+        getAll(){
+          return {
+            homes: this.getHomes(),
+            users: readJSON(USERS_KEY, {}),
+            data: readJSON(DATA_KEY, {}),
+            medsFlat: readJSON(MEDS_KEY, [])
+          };
+        }
+      };
+
+      /* -------------------- uiModule (DOM interactions) -------------------- */
+      const uiModule = {
+        init(){
+          dataModule.ensureDefaults();
+          this.cacheEls();
+          this.wireEvents();
+          this.refreshAll(); // Initial data population and UI setup
+        },
+
+        cacheEls(){
+          // General
+          this.whoami = $("whoami");
+          this.btnSignOut = $("btnSignOut");
+          this.userInfo = $("userInfo");
+          this.userRole = $("userRole");
+          this.userHomes = $("userHomes");
+          // Stats
+          this.statHomes = $("statHomes");
+          this.statResidents = $("statResidents");
+          this.statMeds = $("statMeds");
+          this.statAdmins = $("statAdmins");
+          // Sections
+          this.ownerSection = $("ownerSection");
+          this.pharmacySection = $("pharmacySection");
+          this.nurseSection = $("nurseSection");
+          // Owner controls
+          this.ownerHomeSelector = $("ownerHomeSelector");
+          this.ownerResidentName = $("ownerResidentName");
+          this.ownerResidentDoctor = $("ownerResidentDoctor");
+          this.btnOwnerAddResident = $("btnOwnerAddResident");
+          this.ownerResidentsList = $("ownerResidentsList");
+          // Pharmacy controls
+          this.pharmacyHomeSelector = $("pharmacyHomeSelector");
+          this.pharmacyResidentSelector = $("pharmacyResidentSelector");
+          this.pharmacyMedName = $("pharmacyMedName");
+          this.pharmacyMedDose = $("pharmacyMedDose");
+          this.pharmacyMedSchedule = $("pharmacyMedSchedule");
+          this.btnPharmacyAddMed = $("btnPharmacyAddMed");
+          this.pharmacyMedsList = $("pharmacyMedsList");
+          // Nurse controls
+          this.nurseHomeSelector = $("nurseHomeSelector");
+          this.nurseResidentSelector = $("nurseResidentSelector");
+          this.nurseMonthSelect = $("nurseMonthSelect");
+          this.nurseYearSelect = $("nurseYearSelect");
+          this.nurseCalendarContainer = $("nurseCalendarContainer");
+          // Manage controls
+          this.manageHomeSelector = $("manageHomeSelector");
+          this.manageAddHomeInput = $("manageAddHomeInput");
+          this.btnManageAddHome = $("btnManageAddHome");
+          this.btnExport = $("btnExport");
+          this.btnClearLocal = $("btnClearLocal");
+          this.btnRefreshStats = $("btnRefreshStats");
+        },
+
+        wireEvents(){
+          if (this.btnSignOut) this.btnSignOut.addEventListener("click", authModule.signOut);
+
+          if (this.btnOwnerAddResident) this.btnOwnerAddResident.addEventListener("click", ()=> {
+            const name = this.ownerResidentName.value.trim();
+            const doctor = this.ownerResidentDoctor.value.trim();
+            const home = this.ownerHomeSelector.value;
+            if (!home) return alert("Please select a home.");
+            if (!name) return alert("Please enter a resident name.");
+
+            if (dataModule.addResident(home, name, doctor)) {
+              this.ownerResidentName.value = "";
+              this.ownerResidentDoctor.value = "";
+              this.populateOwnerResidentsList();
+              this.fillNurseResidents(); // Update nurse resident selector as well
+              this.fillResidentsInto(this.pharmacyResidentSelector, home); // Update pharmacy resident selector
+              this.refreshStats();
+            } else {
+              alert(`Resident "${name}" already exists in ${home}.`);
+            }
+          });
+
+          if (this.btnPharmacyAddMed) this.btnPharmacyAddMed.addEventListener("click", ()=> {
+            const home = this.pharmacyHomeSelector.value;
+            const resident = this.pharmacyResidentSelector.value;
+            const name = this.pharmacyMedName.value.trim();
+            const dose = this.pharmacyMedDose.value.trim();
+            const schedule = this.pharmacyMedSchedule.value.trim();
+
+            const accounts = authModule.msalInstance.getAllAccounts();
+            if (!accounts.length) return alert("You must be signed in to add medication.");
+            const acct = accounts[0];
+
+            if (!home || !resident || !name) return alert("Please complete Home, Resident, and Medication Name.");
+
+            const entry = {
+              name: name,
+              dose: dose,
+              schedule: schedule,
+              addedBy: acct.username,
+              timestamp: new Date().toISOString()
+            };
+
+            if (dataModule.addMedication(home, resident, entry)) {
+              this.pharmacyMedName.value = "";
+              this.pharmacyMedDose.value = "";
+              this.pharmacyMedSchedule.value = "";
+              this.renderPharmacyMeds(this.getCurrentUserRecord()); // Re-render meds list
+              this.renderNurseCalendar(); // Update nurse calendar too if this resident/home is selected
+              this.refreshStats();
+            } else {
+              alert("Failed to add medication. Please check inputs.");
+            }
+          });
+
+          if (this.ownerHomeSelector) this.ownerHomeSelector.addEventListener("change", ()=> {
+            this.populateOwnerResidentsList();
+          });
+
+          if (this.pharmacyHomeSelector) this.pharmacyHomeSelector.addEventListener("change", ()=> {
+            this.fillResidentsInto(this.pharmacyResidentSelector, this.pharmacyHomeSelector.value);
+            this.renderPharmacyMeds(this.getCurrentUserRecord());
+          });
+
+          if (this.nurseHomeSelector) this.nurseHomeSelector.addEventListener("change", ()=> { this.fillNurseResidents(); this.renderNurseCalendar(); });
+          if (this.nurseResidentSelector) this.nurseResidentSelector.addEventListener("change", ()=> this.renderNurseCalendar());
+          if (this.nurseMonthSelect) this.nurseMonthSelect.addEventListener("change", ()=> this.renderNurseCalendar());
+          if (this.nurseYearSelect) this.nurseYearSelect.addEventListener("change", ()=> this.renderNurseCalendar());
+
+          if (this.btnManageAddHome) this.btnManageAddHome.addEventListener("click", ()=> {
+            const name = this.manageAddHomeInput.value.trim();
+            if(!name) return alert("Please enter a home name.");
+
+            if (dataModule.addHome(name)) {
+              this.manageAddHomeInput.value = "";
+              this.refreshAll();
+            } else {
+              alert(`Home "${name}" already exists.`);
+            }
+          });
+
+          if (this.btnExport) this.btnExport.addEventListener("click", ()=> console.log("EXPORT:", dataModule.getAll()));
+          if (this.btnClearLocal) this.btnClearLocal.addEventListener("click", ()=> {
+            if(confirm("Clear ALL local data? This cannot be undone and will sign you out.")){
+              localStorage.clear();
+              window.location.href = POST_LOGOUT_REDIRECT_URI; // Redirect to login after clearing
+            }
+          });
+          if (this.btnRefreshStats) this.btnRefreshStats.addEventListener("click", ()=> this.refreshStats());
+        },
+
+        getCurrentUserAccount(){
+          const accounts = authModule.msalInstance.getAllAccounts();
+          return accounts.length > 0 ? accounts[0] : null;
+        },
+
+        getCurrentUserRecord(){
+          const acct = this.getCurrentUserAccount();
+          if (!acct) return null;
+          const users = readJSON(USERS_KEY, {});
+          return users[acct.username] || null;
+        },
+
+        refreshAll(){
+          this.populateHomeSelectors();
+          this.populateMonthYearSelectors();
+          this.updateUserDisplayAndRoles();
+          this.refreshStats();
+        },
+
+        updateUserDisplayAndRoles(){
+          const acct = this.getCurrentUserAccount();
+          if (acct) {
+            this.whoami.textContent = escapeHTML(acct.username || acct.name || "Signed in");
+            this.btnSignOut.classList.remove("hidden");
+
+            const userRecord = this.getCurrentUserRecord();
+            if (userRecord) {
+              this.userInfo.textContent = escapeHTML(acct.name || acct.username);
+              this.userRole.textContent = "Role: " + escapeHTML(userRecord.role);
+              this.userHomes.textContent = (userRecord.homes && userRecord.homes.length) ? escapeHTML(userRecord.homes.join(", ")) : "—";
+
+              // Toggle role-specific sections
+              this.ownerSection.classList.toggle("hidden", userRecord.role !== "owner");
+              this.pharmacySection.classList.toggle("hidden", userRecord.role !== "pharmacy");
+              this.nurseSection.classList.toggle("hidden", userRecord.role !== "nurse");
+
+              // Populate role-specific selectors/lists
+              if (userRecord.role === "owner") {
+                this.populateOwnerResidentsList();
+              }
+              if (userRecord.role === "pharmacy") {
+                this.populatePharmacySelectors(userRecord.homes);
+                this.renderPharmacyMeds(userRecord);
+              }
+              if (userRecord.role === "nurse") {
+                this.populateNurseSelectors(userRecord.homes);
+                this.renderNurseCalendar();
+              }
+            } else {
+              // User signed in via MSAL but no role assigned in local storage
+              this.userInfo.textContent = escapeHTML(acct.name || acct.username);
+              this.userRole.textContent = "Role: Undefined (Please set role in index.html)";
+              this.userHomes.textContent = "—";
+              // Hide all specific role sections
+              this.ownerSection.classList.add("hidden");
+              this.pharmacySection.classList.add("hidden");
+              this.nurseSection.classList.add("hidden");
+            }
+          } else {
+            this.whoami.textContent = "Not signed in";
+            this.btnSignOut.classList.add("hidden");
+            this.userInfo.textContent = "";
+            this.userRole.textContent = "";
+            this.userHomes.textContent = "";
+          }
+        },
+
+        populateHomeSelectors(){
+          const allHomes = dataModule.getHomes();
+          // Clear and populate all home selectors
+          const selectors = [this.ownerHomeSelector, this.pharmacyHomeSelector, this.nurseHomeSelector, this.manageHomeSelector];
+          selectors.forEach(sel => {
+            if (sel) {
+              sel.innerHTML = "";
+              if (allHomes.length === 0) {
+                const o = document.createElement("option"); o.value = ""; o.textContent = "(No homes defined)"; o.disabled = true; sel.appendChild(o);
+              } else {
+                allHomes.forEach(h => { const o = document.createElement("option"); o.value = h; o.textContent = escapeHTML(h); sel.appendChild(o); });
+              }
+            }
+          });
+        },
+
+        populatePharmacySelectors(servedHomes){
+          if (this.pharmacyHomeSelector){
+            this.pharmacyHomeSelector.innerHTML = "";
+            if (servedHomes && servedHomes.length > 0) {
+              servedHomes.forEach(h=> { const o=document.createElement("option"); o.value=h; o.textContent=escapeHTML(h); this.pharmacyHomeSelector.appendChild(o); });
+              this.fillResidentsInto(this.pharmacyResidentSelector, this.pharmacyHomeSelector.value);
+            } else {
+              const o = document.createElement("option"); o.value = ""; o.textContent = "(No homes assigned)"; o.disabled = true; this.pharmacyHomeSelector.appendChild(o);
+            }
+          }
+        },
+
+        populateNurseSelectors(assignedHomes){
+          if (this.nurseHomeSelector){
+            this.nurseHomeSelector.innerHTML = "";
+            if (assignedHomes && assignedHomes.length > 0) {
+              assignedHomes.forEach(h=>{ const o=document.createElement("option"); o.value=h; o.textContent=escapeHTML(h); this.nurseHomeSelector.appendChild(o); });
+              this.fillNurseResidents(); // Populate residents for the first assigned home
+            } else {
+              const o = document.createElement("option"); o.value = ""; o.textContent = "(No homes assigned)"; o.disabled = true; this.nurseHomeSelector.appendChild(o);
+            }
+          }
+        },
+
+        populateOwnerResidentsList(){
+          // show residents for selected home (ownerHomeSelector)
+          if (!this.ownerResidentsList || !this.ownerHomeSelector.value) {
+            if (this.ownerResidentsList) this.ownerResidentsList.innerHTML = `<div class="small muted">No home selected or no homes available.</div>`;
+            return;
+          }
+          const home = this.ownerHomeSelector.value;
+          const data = readJSON(DATA_KEY, {});
+          const residentsObj = (data[home] && data[home].residents) || {};
+          const residents = Object.keys(residentsObj);
+
+          if (!residents.length) {
+            this.ownerResidentsList.innerHTML = `<div class="small muted">No residents for ${escapeHTML(home)}.</div>`;
+            return;
+          }
+          let out = `<table><thead><tr><th>Resident</th><th>Doctor</th><th>Medications</th></tr></thead><tbody>`;
+          residents.forEach(r=>{
+            const doc = escapeHTML((residentsObj[r] && residentsObj[r].doctor) || "");
+            const meds = (data[home].meds[r]||[]).map(m=> escapeHTML(m.name)).join(", "); // Just show names
+            out += `<tr><td>${escapeHTML(r)}</td><td>${doc}</td><td>${meds || '<span class="muted">None</span>'}</td></tr>`;
+          });
+          out += `</tbody></table>`;
+          this.ownerResidentsList.innerHTML = out;
+        },
+
+        fillResidentsInto(selEl, home){
+          if (!selEl) return;
+          selEl.innerHTML = "";
+          const data = readJSON(DATA_KEY, {});
+          const residents = Object.keys((data[home] && data[home].residents) || {});
+          if (!residents.length) {
+            const o = document.createElement("option"); o.value = ""; o.textContent = "(No residents)"; o.disabled = true; selEl.appendChild(o);
+            return;
+          }
+          residents.forEach(r => { const o=document.createElement("option"); o.value=r; o.textContent=escapeHTML(r); selEl.appendChild(o); });
+        },
+
+        renderPharmacyMeds(userRecord){
+          const data = readJSON(DATA_KEY, {});
+          const servedHomes = userRecord.homes||[];
+          if (!this.pharmacyMedsList) return;
+          if (!servedHomes.length) {
+            this.pharmacyMedsList.innerHTML = `<div class="small muted">No homes assigned to your pharmacy role.</div>`;
+            return;
+          }
+
+          let out = "";
+servedHomes.forEach(h => {
+            out += `<h5 style="margin-top:16px">${escapeHTML(h)}</h5>`; // Added margin-top for better spacing
+            const residents = Object.keys((data[h] && data[h].residents) || {});
+            if (!residents.length) {
+              out += `<div class="small muted">No residents in ${escapeHTML(h)}.</div>`;
+              return;
+            }
+            out += `<table><thead><tr><th>Resident</th><th>Medications</th></tr></thead><tbody>`;
+            residents.forEach(r=>{
+              const meds = (data[h].meds[r]||[]);
+              out += `<tr><td>${escapeHTML(r)}</td><td>`;
+              if (meds.length) {
+                out += meds.map((m,mi)=>`<div>
+                  <strong>${escapeHTML(m.name)}</strong> ${m.dose ? ' — '+escapeHTML(m.dose) : ''}
+                  ${m.instructions ? `<div class="small muted">${escapeHTML(m.instructions)}</div>` : ""}
+                  <div class="small muted">added by ${escapeHTML(m.addedBy)}</div>
+                </div>`).join("<hr/>");
+              } else {
+                out += `<div class="small muted">No medications assigned.</div>`;
+              }
+              out += `</td></tr>`;
+            });
+            out += `</tbody></table>`;
+          });
+          this.pharmacyMedsList.innerHTML = out;
+        },
+
+        populateMonthYearSelectors(){
+          const msel = this.nurseMonthSelect;
+          const ysel = this.nurseYearSelect;
+          if (!msel || !ysel) return;
+
+          const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+          msel.innerHTML = "";
+          ysel.innerHTML = "";
+
+          // Populate months
+          months.forEach((m,i)=> {
+            const o=document.createElement("option");
+            o.value=i;
+            o.textContent=m;
+            msel.appendChild(o);
+          });
+
+          // Populate years (e.g., current year +/- 2)
+          const now = new Date();
+          const currentYear = now.getFullYear();
+          for (let y = currentYear - 2; y <= currentYear + 2; y++){
+            const o=document.createElement("option");
+            o.value=y;
+            o.textContent=y;
+            if (y===currentYear) o.selected=true; // Select current year by default
+            ysel.appendChild(o);
+          }
+
+          msel.value = now.getMonth(); // Set default month to current month
+        },
+
+        fillNurseResidents(){
+          const home = (this.nurseHomeSelector && this.nurseHomeSelector.value);
+          const sel = this.nurseResidentSelector;
+          if (!sel) return;
+
+          sel.innerHTML = ""; // Clear existing options
+          if (!home) {
+            const o = document.createElement("option"); o.value = ""; o.textContent = "(Select a home)"; o.disabled = true; sel.appendChild(o);
+            return;
+          }
+
+          const data = readJSON(DATA_KEY, {});
+          const residents = Object.keys((data[home] && data[home].residents) || {});
+          if (!residents.length) {
+            const o = document.createElement("option"); o.value = ""; o.textContent = "(No residents)"; o.disabled = true; sel.appendChild(o);
+            return;
+          }
+          residents.forEach(r => { const o=document.createElement("option"); o.value=r; o.textContent=escapeHTML(r); sel.appendChild(o); });
+        },
+
+        renderNurseCalendar(){
+          const home = (this.nurseHomeSelector && this.nurseHomeSelector.value);
+          const resident = (this.nurseResidentSelector && this.nurseResidentSelector.value);
+          const month = parseInt((this.nurseMonthSelect && this.nurseMonthSelect.value),10); // month is 0-indexed
+          const year = parseInt((this.nurseYearSelect && this.nurseYearSelect.value),10);
+          const container = this.nurseCalendarContainer;
+
+          if (!container) return; // Ensure container exists
+
+          // Clear previous calendar
+          container.innerHTML = "";
+
+          if (!home || !resident || isNaN(month) || isNaN(year)) {
+            container.innerHTML = `<div class="small muted">Please select a home, resident, month, and year.</div>`;
+            return;
+          }
+
+          const firstDayOfMonth = new Date(year, month, 1);
+          const lastDayOfMonth = new Date(year, month + 1, 0);
+          const startDayOfWeek = firstDayOfMonth.getDay(); // 0 for Sunday, 1 for Monday, etc.
+          const totalDaysInMonth = lastDayOfMonth.getDate();
+
+          const data = readJSON(DATA_KEY, {});
+          const homeData = data[home];
+          if (!homeData) {
+            container.innerHTML = `<div class="small muted">No data found for ${escapeHTML(home)}.</div>`;
+            return;
+          }
+          const meds = homeData.meds[resident] || [];
+          const administrations = homeData.administrations[resident] || [];
+
+          let html = `<div class="flex" style="gap:6px;margin-bottom:8px;align-items:center"><div class="small muted">Medications:</div><div class="small">`;
+          if (meds.length) {
+            html += meds.map(m=>`<div><strong>${escapeHTML(m.name)}</strong> ${m.dose ? ' — '+escapeHTML(m.dose) : ''}</div>`).join("");
+          } else {
+            html += `<div class="small muted">No medications assigned to this resident.</div>`;
+          }
+          html += `</div></div>`;
+
+          // Calendar grid header
+          html += `<div class="calendar">
+            <div class="calHeader">Sun</div><div class="calHeader">Mon</div><div class="calHeader">Tue</div><div class="calHeader">Wed</div><div class="calHeader">Thu</div><div class="calHeader">Fri</div><div class="calHeader">Sat</div>`;
+
+          // Empty cells for days before the 1st of the month
+          for (let i = 0; i < startDayOfWeek; i++) {
+            html += `<div class="calCell"></div>`;
+          }
+
+          // Cells for each day of the month
+          for (let d = 1; d <= totalDaysInMonth; d++){
+            const currentDate = new Date(year, month, d);
+            const isoDate = currentDate.toISOString().slice(0,10); // YYYY-MM-DD
+            const dayEvents = administrations.filter(a => a.date === isoDate);
+
+            html += `<div class="calCell">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <strong>${d}</strong>
+                <button class="inlineLink" onclick="openAdminModal('${escapeHTML(home).replace(/'/g,"\\'")}','${escapeHTML(resident).replace(/'/g,"\\'")}','${isoDate}')">Record</button>
+              </div>`;
+
+            if (dayEvents.length) {
+              dayEvents.forEach(ev => {
+                const statusPill = ev.given ? '<span class="pill">GIVEN</span>' : '<span class="small muted">Pending</span>';
+                html += `<div style="margin-top:6px;background:#f7f7f7;padding:6px;border-radius:6px;">
+                  <div><strong>${escapeHTML(ev.medName)}</strong> ${statusPill}</div>`;
+                if (ev.comment) html += `<div class="small muted">${escapeHTML(ev.comment)}</div>`;
+                html += `<div class="small muted">by ${escapeHTML(ev.by)} ${ev.timestamp?(' at '+ev.timestamp.slice(11,19)):''}</div>
+                </div>`;
+              });
+            }
+            html += `</div>`; // End calCell
+          }
+
+          // Empty cells for days after the last day of the month
+          const totalCells = startDayOfWeek + totalDaysInMonth;
+          const endPad = (7 - (totalCells % 7)) % 7; // Number of cells to fill to complete the last row
+          for (let i = 0; i < endPad; i++) {
+            html += `<div class="calCell"></div>`;
+          }
+
+          html += `</div>`; // End calendar
+          container.innerHTML = html;
+        },
+
+        openAdminModal(home, resident, isoDate){
+          const acct = this.getCurrentUserAccount();
+          if (!acct) return alert("You must be signed in to record doses.");
+
+          const userRecord = this.getCurrentUserRecord();
+          if (!userRecord || userRecord.role !== "nurse") return alert("Only nurses can record doses.");
+
+          const data = readJSON(DATA_KEY, {});
+          const meds = (data[home] && data[home].meds[resident]) || [];
+          if (!meds.length) return alert("No medications to record for this resident.");
+
+          const medNames = meds.map((m,i)=>`${i+1}. ${escapeHTML(m.name)} (${escapeHTML(m.dose||'')})`).join("\n");
+          const sel = prompt(`Record medication for ${escapeHTML(resident)} on ${isoDate}\nChoose med by number:\n${medNames}`);
+          if (!sel) return; // User cancelled
+
+          const idx = parseInt(sel,10)-1;
+          if (isNaN(idx) || idx < 0 || idx >= meds.length) return alert("Invalid medication choice.");
+
+          const med = meds[idx];
+          const comment = prompt("Add optional comment (leave blank for none):") || "";
+
+          const adminEntry = {
+            medName: med.name, // Use original med name, it will be escaped by addAdministration
+            medIndex: idx,
+            date: isoDate,
+            given: true,
+            comment: comment, // Will be escaped by addAdministration
+            by: acct.username, // Will be escaped by addAdministration
+            timestamp: new Date().toISOString()
+          };
+
+          if (dataModule.addAdministration(home, resident, adminEntry)) {
+            this.renderNurseCalendar(); // Re-render calendar to show new administration
+            this.refreshStats(); // Update stats
+          } else {
+            alert("Failed to record administration. Please try again.");
+          }
+        },
+
+        refreshStats(){
+          const all = dataModule.getAll();
+          const homes = all.homes.length;
+
+          // residents: sum of residents across homes
+          let residentsCount = 0;
+          Object.values(all.data).forEach(h => { residentsCount += Object.keys(h.residents || {}).length; });
+
+          const medsCount = (all.medsFlat || []).length;
+
+          // admin events count
+          let adminsCount = 0;
+          Object.values(all.data).forEach(h => {
+            Object.values(h.administrations || {}).forEach(arr => adminsCount += arr.length);
+          });
+
+          this.statHomes.textContent = homes;
+          this.statResidents.textContent = residentsCount;
+          this.statMeds.textContent = medsCount;
+          this.statAdmins.textContent = adminsCount;
+        }
+
+      }; // end uiModule
+
+      /* -------------------- Expose calendar modal for inline onclick -------------------- */
+      // This makes `openAdminModal` globally accessible from HTML onclick attributes
+      window.openAdminModal = function(home, resident, isoDate){ uiModule.openAdminModal(home, resident, isoDate); };
+
+      /* -------------------- Bootstrapping -------------------- */
+      document.addEventListener("DOMContentLoaded", async function(){
+        // Initial setup for data and UI
+        dataModule.ensureDefaults();
+        uiModule.init();
+
+        // Check if user is signed in. If not, redirect to index.html (login page).
+        const accounts = authModule.msalInstance.getAllAccounts();
+        if (!accounts || accounts.length === 0) {
+          alert("You are not signed in. Redirecting to login page.");
+          window.location.href = POST_LOGOUT_REDIRECT_URI; // Redirect to index.html
+          return;
+        }
+
+        // Handle possible redirect after a successful login in a popup
+        try {
+          const response = await authModule.msalInstance.handleRedirectPromise();
+          if (response && response.account) {
+            authModule.msalInstance.setActiveAccount(response.account);
+          }
+        } catch (error) {
+          console.error("Error handling MSAL redirect promise on dashboard load:", error);
+        }
+
+        // If a user is now active, update UI
+        uiModule.updateUserDisplayAndRoles();
+      });
+
+    })(); // end main IIFE
+  </script>
+
+</body>
+</html>
+          
