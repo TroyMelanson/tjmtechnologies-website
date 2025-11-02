@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Digital MAR — OneDrive (Vanilla)</title>
+<style>
+  body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;margin:0;background:#f1f5f9;color:#0f172a}
+  header{background:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e2e8f0}
+  .container{max-width:1100px;margin:20px auto;padding:0 16px}
+  .btn{display:inline-block;padding:8px 12px;border-radius:6px;border:none;background:#0369a1;color:#fff;cursor:pointer}
+  .btn.gray{background:#64748b}
+  .card{background:#fff;padding:12px;border-radius:8px;box-shadow:0 1px 2px rgba(2,6,23,0.06)}
+  .grid{display:grid;grid-template-columns:1fr 320px;gap:16px}
+  .list-item{padding:10px;border-bottom:1px solid #e6eef6;cursor:pointer}
+  .spinner{width:36px;height:36px;border:4px solid #e6eef6;border-top-color:#0369a1;border-radius:50%;animation:spin 1s linear infinite;display:inline-block;vertical-align:middle}
+  @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+  .hidden{display:none}
+  input,textarea,select{width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:6px;margin-top:6px}
+  .top-actions{display:flex;gap:8px;align-items:center}
+  .small{font-size:12px;color:#475569}
+</style>
+</head>
+<body>
+<header>
+  <div><strong>Digital MAR — OneDrive</strong></div>
+  <div id="accountArea" class="small">Not signed in</div>
+</header>
+<main class="container">
+  <div id="loader" class="card" style="display:flex;align-items:center;gap:12px"><div class="spinner"></div><div>Preparing app...</div></div>
+
+  <div id="app" class="hidden">
+    <div class="top-actions" style="justify-content:space-between;margin-bottom:12px">
+      <div>
+        <button id="signInBtn" class="btn">Sign in</button>
+        <button id="signOutBtn" class="btn gray hidden">Sign out</button>
+        <button id="syncBtn" class="btn gray">Sync Now</button>
+      </div>
+      <div>
+        <button id="downloadBackup" class="btn gray">Download Backup</button>
+        <label class="btn gray" style="cursor:pointer"><input id="uploadBackup" type="file" accept=".json" style="display:none"> Upload Backup</label>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div>
+        <div class="card" style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <strong>Residents</strong>
+            <button id="addResidentBtn" class="btn">Add Resident</button>
+          </div>
+          <div id="residentsList" style="max-height:520px;overflow:auto"></div>
+        </div>
+      </div>
+      <div>
+        <div id="detailCard" class="card">
+          <div id="detailEmpty">Open a resident to see MAR sheet</div>
+          <div id="detailContent" class="hidden">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <div><strong id="resName"></strong><div class="small" id="resPhys"></div></div>
+              <div>
+                <button id="backBtn" class="btn gray">Back</button>
+                <button id="saveResidentBtn" class="btn">Save to Cloud</button>
+              </div>
+            </div>
+            <div id="medsArea"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="message" class="small" style="margin-top:12px"></div>
+</main>
+
+<!-- MSAL from CDN (must remain external) -->
+<script src="https://alcdn.msauth.net/browser/2.34.0/js/msal-browser.min.js"></script>
+
+<script>
+// -------- CONFIG --------
+const ONE_DRIVE_FOLDER = '/DigitalMAR'; // folder path
+const CLIENT_ID = 'YOUR_AZURE_APP_CLIENT_ID_HERE'; // <-- REPLACE with your Azure app client ID
+const SCOPES = ['Files.ReadWrite.All','User.Read'];
+
+// -------- UI refs --------
+const loader = document.getElementById('loader');
+const appRoot = document.getElementById('app');
+const accountArea = document.getElementById('accountArea');
+const signInBtn = document.getElementById('signInBtn');
+const signOutBtn = document.getElementById('signOutBtn');
+const syncBtn = document.getElementById('syncBtn');
+const addResidentBtn = document.getElementById('addResidentBtn');
+const residentsList = document.getElementById('residentsList');
+const detailEmpty = document.getElementById('detailEmpty');
+const detailContent = document.getElementById('detailContent');
+const resName = document.getElementById('resName');
+const resPhys = document.getElementById('resPhys');
+const backBtn = document.getElementById('backBtn');
+const saveResidentBtn = document.getElementById('saveResidentBtn');
+const medsArea = document.getElementById('medsArea');
+const message = document.getElementById('message');
+const downloadBackup = document.getElementById('downloadBackup');
+const uploadBackup = document.getElementById('uploadBackup');
+
+// -------- MSAL (Microsoft Authentication Library) --------
+const msalConfig = {
+  auth: {
+    clientId: "96daabf8-67b5-4dbc-9897-96ce471d4c86",
+    redirectUri: window.location.origin // automatically uses the current domain
+  },
+  cache: { cacheLocation: "localStorage" }
+};
+
+
+
+const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+
+async function signInInteractive(){
+  try {
+    const resp = await msalInstance.loginPopup({ scopes: SCOPES, prompt: "select_account" });
+    updateAccountUI();
+    return resp;
+  } catch(e){ console.error(e); alert('Sign in failed: '+e.message); throw e; }
+}
+
+async function acquireToken(){
+  const accounts = msalInstance.getAllAccounts();
+  if(accounts.length===0) await signInInteractive();
+  try{
+    const resp = await msalInstance.acquireTokenSilent({ scopes: SCOPES, account: msalInstance.getAllAccounts()[0] });
+    return resp.accessToken;
+  } catch(e){
+    const resp = await msalInstance.acquireTokenPopup({ scopes: SCOPES });
+    return resp.accessToken;
+  }
+}
+
+// -------- Graph helpers for OneDrive file access --------
+async function graphGet(path){ // path: /me/drive/root:/folder/file:/content or /me/drive/root:/folder
+  const token = await acquireToken();
+  const res = await fetch('https://graph.microsoft.com/v1.0' + path, { headers: { Authorization: 'Bearer ' + token } });
+  if(res.status===404) throw { code:404 };
+  if(!res.ok) { const txt = await res.text(); throw new Error(txt); }
+  return res;
+}
+
+async function readJsonFile(folderPath, filename){
+  try {
+    const res = await fetch('https://graph.microsoft.com/v1.0/me/drive/root:' + folderPath + '/' + filename + ':/content', { headers: { Authorization: 'Bearer ' + await acquireToken() } });
+    if(res.status===404) return null;
+    if(!res.ok){ const t=await res.text(); throw new Error(t); }
+    const txt = await res.text();
+    if(!txt) return null;
+    return JSON.parse(txt);
+  } catch(e){
+    if(e && e.code===404) return null;
+    throw e;
+  }
+}
+
+async function writeJsonFile(folderPath, filename, obj){
+  const token = await acquireToken();
+  const body = JSON.stringify(obj, null, 2);
+  const res = await fetch('https://graph.microsoft.com/v1.0/me/drive/root:' + folderPath + '/' + filename + ':/content', {
+    method:'PUT', headers:{ Authorization: 'Bearer ' + token, 'Content-Type':'application/json' }, body
+  });
+  if(!res.ok){ const t=await res.text(); throw new Error('Write failed: '+t); }
+  return res.json();
+}
+
+async function ensureFolder(folderPath){
+  try{
+    const resp = await graphGet('/me/drive/root:' + folderPath);
+    return resp.json? await resp.json() : resp;
+  } catch(e){
+    if(e.code===404){
+      // create folder at root
+      const token = await acquireToken();
+      const name = folderPath.replace(/^\//,'');
+      const res = await fetch('https://graph.microsoft.com/v1.0/me/drive/root/children', {
+        method:'POST', headers:{ Authorization:'Bearer ' + token, 'Content-Type':'application/json' }, body: JSON.stringify({ name, folder: {}, "@microsoft.graph.conflictBehavior":"rename" })
+      });
+      if(!res.ok){ const t=await res.text(); throw new Error('Create folder failed: '+t); }
+      return res.json();
+    }
+    throw e;
+  }
+}
+
+// -------- App state and operations --------
+let state = { residents: [], medications: [], records: [] };
+let currentResidentId = null;
+
+function showMessage(txt, timeout=4000){ message.textContent = txt; if(timeout) setTimeout(()=>{ if(message.textContent===txt) message.textContent=''; }, timeout); }
+
+async function loadAll(){
+  try{
+    loader.style.display='flex';
+    appRoot.classList.add('hidden');
+    await ensureFolder(ONE_DRIVE_FOLDER);
+    const [residents, medications, records] = await Promise.all([
+      readJsonFile(ONE_DRIVE_FOLDER,'residents.json').catch(()=>null),
+      readJsonFile(ONE_DRIVE_FOLDER,'medications.json').catch(()=>null),
+      readJsonFile(ONE_DRIVE_FOLDER,'records.json').catch(()=>null)
+    ]);
+    state.residents = residents || [];
+    state.medications = medications || [];
+    state.records = records || [];
+    renderResidents();
+    showMessage('Data loaded');
+  } catch(e){
+    console.error('LoadAll error', e);
+    showMessage('Load failed: ' + (e.message||e));
+  } finally{
+    loader.style.display='none';
+    appRoot.classList.remove('hidden');
+  }
+}
+
+async function saveAll(){
+  try{
+    showMessage('Saving...');
+    await Promise.all([
+      writeJsonFile(ONE_DRIVE_FOLDER,'residents.json', state.residents),
+      writeJsonFile(ONE_DRIVE_FOLDER,'medications.json', state.medications),
+      writeJsonFile(ONE_DRIVE_FOLDER,'records.json', state.records)
+    ]);
+    showMessage('Saved to OneDrive');
+  } catch(e){ console.error(e); showMessage('Save failed: '+(e.message||e)); }
+}
+
+function renderResidents(){
+  residentsList.innerHTML='';
+  if(state.residents.length===0){ residentsList.innerHTML='<div class="small" style="padding:12px">No residents yet</div>'; return; }
+  state.residents.forEach(r=>{
+    const d = document.createElement('div');
+    d.className='list-item';
+    d.textContent = r.name + (r.physician ? (' — Dr. ' + r.physician) : '');
+    d.onclick = ()=>openResident(r.id);
+    residentsList.appendChild(d);
+  });
+}
+
+function openResident(id){
+  currentResidentId = id;
+  const r = state.residents.find(x=>x.id===id);
+  if(!r) return;
+  detailEmpty.classList.add('hidden');
+  detailContent.classList.remove('hidden');
+  resName.textContent = r.name;
+  resPhys.textContent = 'Physician: ' + (r.physician||'');
+  renderMedsForResident(r);
+}
+
+function renderMedsForResident(r){
+  medsArea.innerHTML='';
+  const meds = state.medications.filter(m=>m.residentId===r.id);
+  if(meds.length===0){ medsArea.innerHTML='<div class="small">No medications for this resident</div>'; return; }
+  meds.forEach(m=>{
+    const box = document.createElement('div');
+    box.style.padding='8px;border-bottom=';
+    box.innerHTML = '<div style="font-weight:600">'+m.name+'</div><div class="small">Time: '+(m.hour||'')+'</div>';
+    medsArea.appendChild(box);
+  });
+  // simple MAR grid for current month (toggle given)
+  const monthDate = new Date();
+  const days = new Date(monthDate.getFullYear(), monthDate.getMonth()+1, 0).getDate();
+  const grid = document.createElement('div'); grid.style.marginTop='12px';
+  const header = document.createElement('div'); header.style.display='grid'; header.style.gridTemplateColumns='200px repeat('+days+', 1fr)'; header.style.gap='2px';
+  header.innerHTML = '<div style="padding:6px;background:#f8fafc;font-weight:600">Medication</div>' + Array.from({length:days}).map((_,i)=>'<div style="padding:6px;background:#f8fafc;text-align:center">'+(i+1)+'</div>').join('');
+  grid.appendChild(header);
+  meds.forEach(m=>{
+    const row = document.createElement('div'); row.style.display='grid'; row.style.gridTemplateColumns='200px repeat('+days+', 1fr)'; row.style.gap='2px'; row.style.alignItems='center';
+    const left = document.createElement('div'); left.style.padding='8px'; left.textContent = m.name + ' (' + (m.hour||'') + ')'; row.appendChild(left);
+    for(let d=1; d<=days; d++){
+      const cell = document.createElement('div'); cell.style.padding='6px'; cell.style.textAlign='center'; cell.style.cursor='pointer'; cell.style.background='#fff';
+      const dateStr = monthDate.getFullYear()+'-'+String(monthDate.getMonth()+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+      const exists = state.records.some(rp=>rp.medicationId===m.id && rp.date===dateStr && rp.residentId===currentResidentId && rp.status==='given');
+      cell.textContent = exists ? 'G' : '';
+      cell.onclick = ()=>{
+        toggleRecord(m.id,dateStr,cell);
+      };
+      row.appendChild(cell);
+    }
+    grid.appendChild(row);
+  });
+  medsArea.appendChild(grid);
+}
+
+function toggleRecord(medId,dateStr,cellElem){
+  const idx = state.records.findIndex(rr=>rr.medicationId===medId && rr.date===dateStr && rr.residentId===currentResidentId);
+  if(idx>=0){ state.records.splice(idx,1); cellElem.textContent=''; }
+  else { state.records.push({ id: crypto.randomUUID(), medicationId: medId, residentId: currentResidentId, date: dateStr, status:'given', initials:'', notes:'' }); cellElem.textContent='G'; }
+}
+
+// -------- UI events --------
+signInBtn.onclick = async ()=>{ try{ await signInInteractive(); updateAccountUI(); await loadAll(); }catch(e){} };
+signOutBtn.onclick = async ()=>{ try{ const acct = msalInstance.getAllAccounts()[0]; if(acct) await msalInstance.logoutPopup({ account:acct }); updateAccountUI(); state = { residents:[], medications:[], records:[] }; renderResidents(); }catch(e){ console.error(e); } };
+syncBtn.onclick = loadAll;
+addResidentBtn.onclick = async ()=>{
+  const name = prompt('Resident full name'); if(!name) return;
+  const physician = prompt('Physician name')||'';
+  state.residents.push({ id: crypto.randomUUID(), name, physician });
+  renderResidents();
+  try{ await saveAll(); }catch(e){ console.error(e); alert('Save failed: '+e.message); }
+};
+backBtn.onclick = ()=>{ detailContent.classList.add('hidden'); detailEmpty.classList.remove('hidden'); currentResidentId=null; };
+saveResidentBtn.onclick = async ()=>{ try{ await saveAll(); }catch(e){ console.error(e); alert('Save failed: '+e.message); } };
+downloadBackup.onclick = ()=>{
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type:'application/json' });
+  const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='mar_backup_'+new Date().toISOString().split('T')[0]+'.json'; a.click(); URL.revokeObjectURL(url);
+};
+uploadBackup.addEventListener('change', async (e)=>{
+  const f = e.target.files[0]; if(!f) return;
+  const txt = await f.text(); try{ const parsed = JSON.parse(txt); if(confirm('Overwrite cloud with this backup?')){ state = parsed; await saveAll(); renderResidents(); alert('Uploaded and saved'); } }catch(err){ alert('Invalid JSON'); }
+  e.target.value = null;
+});
+
+// -------- small helpers --------
+function updateAccountUI(){
+  const accounts = msalInstance.getAllAccounts();
+  if(accounts.length>0){ accountArea.textContent = 'Signed in: ' + accounts[0].username; signInBtn.classList.add('hidden'); signOutBtn.classList.remove('hidden'); }
+  else { accountArea.textContent = 'Not signed in'; signInBtn.classList.remove('hidden'); signOutBtn.classList.add('hidden'); }
+}
+
+// -------- init --------
+(async function init(){
+  try{
+    await new Promise(r=>setTimeout(r,400));
+    loader.style.display='none';
+    appRoot.classList.remove('hidden');
+    updateAccountUI();
+    if(msalInstance.getAllAccounts().length>0){
+      await loadAll();
+    } else {
+      showMessage('Please sign in to connect to OneDrive');
+    }
+  }catch(e){ console.error(e); loader.style.display='none'; appRoot.classList.remove('hidden'); showMessage('Init failed: '+(e.message||e)); }
+})();
+
+</script>
+<script type="module" src="./roles.js"></script>
+
+<div id="userRole"></div>
+
+<div id="ownerSection" style="display:none;">
+  <h2>Owner Dashboard</h2>
+  <p>Manage residents and staff.</p>
+</div>
+
+<div id="pharmacySection" style="display:none;">
+  <h2>Pharmacy Dashboard</h2>
+  <p>Add and manage medications.</p>
+</div>
+
+<div id="nurseSection" style="display:none;">
+  <h2>Nurse Dashboard</h2>
+  <p>Record medication administration.</p>
+</div>
+
+<div id="defaultSection" style="display:none;">
+  <h2>Welcome</h2>
+  <p>Your role has not been assigned yet.</p>
+</div>
+
+</body>
+</html>
