@@ -1,5 +1,0 @@
-{
-  "name": "Digital Medication Administration Record (MAR)",
-  "description": "A web application for long-term care homes and pharmacies to manage and track resident medication administration records. It provides role-based access for administrators, nurses, and pharmacists.",
-  "requestFramePermissions": []
-}
