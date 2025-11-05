@@ -1,13 +1,10 @@
-
 import React, { useState, FormEvent } from 'react';
 
-const DEMO_PASSWORD = 'demo123'; // Simple hardcoded password
+const DEMO_PASSWORD = 'ProjectTechnologies'; // Simple hardcoded password
 
 const demos = [
-  { id: 1, title: 'AI Chatbot Demo', imageUrl: 'https://picsum.photos/500/300?random=10', link: 'https://digitalmar.tjmtechnologies.ca/' },
-  { id: 2, title: 'Workflow Automation', imageUrl: 'https://picsum.photos/500/300?random=11', link: 'https://digitalmar.tjmtechnologies.ca/' },
-  { id: 3, title: 'E-commerce Website', imageUrl: 'https://picsum.photos/500/300?random=12', link: 'https://digitalmar.tjmtechnologies.ca/' },
-  { id: 4, title: 'Mobile App Showcase', imageUrl: 'https://picsum.photos/500/300?random=13', link: 'https://digitalmar.tjmtechnologies.ca/' },
+  { id: 1, title: 'Care Home Suite', imageUrl: 'https://picsum.photos/500/300?random=20', link: './carehome-suite/' },
+  { id: 2, title: 'Digital-MAR', imageUrl: 'https://picsum.photos/500/300?random=21', link: './Digital-MAR/' },
 ];
 
 const DemoCard: React.FC<{ title: string; imageUrl: string; link: string }> = ({ title, imageUrl, link }) => (
@@ -61,7 +58,7 @@ const Demos: React.FC = () => {
             </form>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 max-w-3xl mx-auto">
             {demos.map(demo => (
               <DemoCard key={demo.id} {...demo} />
             ))}
