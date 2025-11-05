@@ -1,6 +1,7 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 
+// Core layout components
 import Header from './components/Header';
 import Hero from './components/Hero';
 import Services from './components/Services';
@@ -17,13 +18,20 @@ const App: React.FC = () => {
   return (
     <Router>
       <div className="bg-primary min-h-screen flex flex-col">
-        {/* Header (with navigation links for both sections + app routes) */}
+        {/* Header (shared across all pages) */}
         <Header />
+
+        {/* Optional top navigation for app links */}
+        <nav className="text-center my-4 space-x-4">
+          <Link to="/" className="text-gray-300 hover:text-white">Home</Link>
+          <Link to="/digital-mar" className="text-gray-300 hover:text-white">Digital MAR</Link>
+          <Link to="/carehome-suite" className="text-gray-300 hover:text-white">CareHome Suite</Link>
+        </nav>
 
         {/* Main content area */}
         <main className="flex-grow">
           <Routes>
-            {/* Home page with in-page sections */}
+            {/* Home page (main sections) */}
             <Route
               path="/"
               element={
@@ -37,9 +45,9 @@ const App: React.FC = () => {
               }
             />
 
-            {/* App-specific routes */}
-            <Route path="/apps/digital-mar" element={<DigitalMAR />} />
-            <Route path="/apps/carehome-suite" element={<CareHomeSuite />} />
+            {/* App pages */}
+            <Route path="/digital-mar" element={<DigitalMAR />} />
+            <Route path="/carehome-suite" element={<CareHomeSuite />} />
           </Routes>
         </main>
 
@@ -51,3 +59,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+

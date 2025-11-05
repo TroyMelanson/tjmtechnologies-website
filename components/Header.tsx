@@ -1,47 +1,25 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
-const NavLink: React.FC<{ 
-  href: string; 
-  children: React.ReactNode; 
-  onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void; 
-  isRoute?: boolean;
-}> = ({ href, children, onClick, isRoute }) => {
-  if (isRoute) {
-    // Use React Router <Link> for app routes
-    return (
-      <Link
-        to={href}
-        className="px-3 py-2 text-gray-300 rounded-md text-sm font-medium hover:text-white hover:bg-secondary transition-colors"
-      >
-        {children}
-      </Link>
-    );
-  }
-
-  // Otherwise, use normal anchor scrolling behavior
-  return (
-    <a
-      href={href}
-      onClick={onClick}
-      className="px-3 py-2 text-gray-300 rounded-md text-sm font-medium hover:text-white hover:bg-secondary transition-colors"
-    >
-      {children}
-    </a>
-  );
-};
+const NavLink: React.FC<{ href: string; children: React.ReactNode; onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void }> = ({ href, children, onClick }) => (
+  <a
+    href={href}
+    onClick={onClick}
+    className="px-3 py-2 text-gray-300 rounded-md text-sm font-medium hover:text-white hover:bg-secondary transition-colors"
+  >
+    {children}
+  </a>
+);
 
 const Header: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  // 👇 Add both internal sections and app routes here
   const navLinks = [
-    { href: '#services', label: 'Services', isRoute: false },
-    { href: '#about', label: 'About', isRoute: false },
-    { href: '#demos', label: 'Demos', isRoute: false },
-    { href: '#contact', label: 'Contact', isRoute: false },
-    { href: '/apps/digital-mar', label: 'Digital MAR', isRoute: true },
-    { href: '/apps/carehome-suite', label: 'CareHome Suite', isRoute: true },
+    { href: '#services', label: 'Services' },
+    { href: '#about', label: 'About' },
+    { href: '#demos', label: 'Demos' },
+    { href: '#contact', label: 'Contact' },
   ];
 
   const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -55,9 +33,7 @@ const Header: React.FC = () => {
       targetElement.scrollIntoView({ behavior: 'smooth' });
     }
 
-    if (isOpen) {
-      setIsOpen(false);
-    }
+    if (isOpen) setIsOpen(false);
   };
 
   return (
@@ -71,36 +47,56 @@ const Header: React.FC = () => {
             </Link>
           </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:block">
-            <div className="ml-10 flex items-baseline space-x-4">
-              {navLinks.map((link) => (
-                <NavLink 
-                  key={link.href} 
-                  href={link.href} 
-                  onClick={link.isRoute ? undefined : handleLinkClick}
-                  isRoute={link.isRoute}
-                >
-                  {link.label}
-                </NavLink>
-              ))}
+          {/* Desktop Menu */}
+          <div className="hidden md:flex items-center space-x-4">
+            {navLinks.map((link) => (
+              <NavLink key={link.href} href={link.href} onClick={handleLinkClick}>
+                {link.label}
+              </NavLink>
+            ))}
+
+            {/* Dropdown for Apps */}
+            <div className="relative">
+              <button
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="px-3 py-2 text-gray-300 rounded-md text-sm font-medium hover:text-white hover:bg-secondary transition-colors"
+              >
+                Apps ▾
+              </button>
+              {isDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-primary border border-secondary rounded-md shadow-lg">
+                  <Link
+                    to="/digital-mar"
+                    className="block px-4 py-2 text-gray-300 hover:bg-secondary hover:text-white"
+                    onClick={() => setIsDropdownOpen(false)}
+                  >
+                    Digital MAR
+                  </Link>
+                  <Link
+                    to="/carehome-suite"
+                    className="block px-4 py-2 text-gray-300 hover:bg-secondary hover:text-white"
+                    onClick={() => setIsDropdownOpen(false)}
+                  >
+                    CareHome Suite
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile menu button */}
           <div className="-mr-2 flex md:hidden">
             <button
               onClick={() => setIsOpen(!isOpen)}
               type="button"
               className="bg-secondary inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-primary focus:ring-white"
             >
-              <span className="sr-only">Open main menu</span>
               {!isOpen ? (
-                <svg className="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               ) : (
-                <svg className="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               )}
@@ -109,20 +105,21 @@ const Header: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile Dropdown */}
+      {/* Mobile dropdown */}
       {isOpen && (
-        <div className="md:hidden" id="mobile-menu">
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-            {navLinks.map((link) => (
-              <NavLink 
-                key={link.href} 
-                href={link.href} 
-                onClick={link.isRoute ? undefined : handleLinkClick}
-                isRoute={link.isRoute}
-              >
-                {link.label}
-              </NavLink>
-            ))}
+        <div className="md:hidden bg-primary border-t border-secondary px-2 pt-2 pb-3 space-y-1 sm:px-3">
+          {navLinks.map((link) => (
+            <NavLink key={link.href} href={link.href} onClick={handleLinkClick}>
+              {link.label}
+            </NavLink>
+          ))}
+          <div>
+            <Link to="/digital-mar" className="block px-3 py-2 text-gray-300 hover:bg-secondary hover:text-white">
+              Digital MAR
+            </Link>
+            <Link to="/carehome-suite" className="block px-3 py-2 text-gray-300 hover:bg-secondary hover:text-white">
+              CareHome Suite
+            </Link>
           </div>
         </div>
       )}
@@ -131,3 +128,4 @@ const Header: React.FC = () => {
 };
 
 export default Header;
+
