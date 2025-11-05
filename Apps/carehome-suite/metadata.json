@@ -1,0 +1,5 @@
+{
+  "name": "CareHome Business Suite-1",
+  "description": "An integrated application to manage employee schedules, track business expenses, and visualize financial data for a long-term care home. It automatically updates the budget based on worked hours and expenses.",
+  "requestFramePermissions": []
+}
