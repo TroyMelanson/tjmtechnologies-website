@@ -7,6 +7,7 @@ const demos = [
   { id: 2, title: 'Digital-MAR', imageUrl: 'https://picsum.photos/500/300?random=21', link: '/Apps/Digital-MAR/index.html' },
 ];
 
+
 const DemoCard: React.FC<{ title: string; imageUrl: string; link: string }> = ({ title, imageUrl, link }) => (
     <a href={link} target="_blank" rel="noopener noreferrer" className="group block bg-secondary rounded-lg shadow-lg overflow-hidden transform transition-transform duration-300 hover:-translate-y-2">
         <img src={imageUrl} alt={title} className="w-full h-48 object-cover" />
