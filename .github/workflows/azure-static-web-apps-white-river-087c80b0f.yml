@@ -34,7 +34,7 @@ jobs:
       # --- Build Digital MAR app ---
       - name: Build Digital MAR app
         run: |
-          cd "Apps/Digital MAR"
+          cd "Apps/Digital-MAR"
           npm install
           npm run build
           mkdir -p ../../dist/Apps/Digital-MAR
