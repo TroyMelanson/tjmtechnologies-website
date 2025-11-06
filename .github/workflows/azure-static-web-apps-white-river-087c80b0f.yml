@@ -16,54 +16,52 @@ jobs:
     name: Build and Deploy Job
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      # --- Checkout Repo ---
+      - uses: actions/checkout@v3
         with:
-          submodules: true
+          submodules: false
           lfs: false
 
-      - name: Set up Node
+      # --- Setup Node.js (latest stable) ---
+      - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 20
 
-      # --- Build main site ---
-      - name: Build Main Site
+      # --- Build Main Website ---
+      - name: Build Main Website
         run: |
-          echo "🔧 Building main site..."
+          echo "Building main site..."
           npm install
           npm run build
-          echo "✅ Main site built successfully."
 
-      # --- Build Digital-MAR app ---
+      # --- Build Digital-MAR App ---
       - name: Build Digital-MAR App
         run: |
-          echo "🚀 Building Digital-MAR app..."
+          echo "Building Digital-MAR app..."
           cd "Apps/Digital-MAR"
           npm install
           npm run build
           mkdir -p ../../dist/Apps/Digital-MAR
           cp -r dist/* ../../dist/Apps/Digital-MAR/
-          echo "✅ Digital-MAR copied to /dist/Apps/Digital-MAR"
 
-      # --- Build CareHome Suite app ---
+      # --- Build CareHome Suite App ---
       - name: Build CareHome Suite App
         run: |
-          echo "🚀 Building CareHome Suite app..."
-          cd "../../Apps/carehome-suite" || cd "Apps/carehome-suite"
+          echo "Building CareHome Suite app..."
+          cd "../carehome-suite"
           npm install
           npm run build
           mkdir -p ../../dist/Apps/carehome-suite
           cp -r dist/* ../../dist/Apps/carehome-suite/
-          echo "✅ CareHome Suite copied to /dist/Apps/carehome-suite"
 
-      # --- Verify build output ---
-      - name: Verify build results
+      # --- Verify what’s in the dist folder (diagnostic) ---
+      - name: List built files
         run: |
-          echo "📂 Checking final build structure..."
-          ls -R dist
+          echo "Listing deployed files:"
+          ls -R dist || true
 
-      # --- Deploy everything to Azure ---
+      # --- Deploy to Azure Static Web Apps ---
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
@@ -71,18 +69,16 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
           app_location: "./"
-          api_location: "api"
           output_location: "dist"
 
+  # --- Close PR Job (for pull requests) ---
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
     runs-on: ubuntu-latest
     name: Close Pull Request Job
     steps:
       - name: Close Pull Request
-        id: closepullrequest
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_WHITE_RIVER_087C80B0F }}
           action: "close"
-
