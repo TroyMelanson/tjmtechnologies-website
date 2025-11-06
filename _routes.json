@@ -1,0 +1,25 @@
+{
+  "routes": [
+    {
+      "route": "/Apps/Digital-MAR/*",
+      "serve": "/Apps/Digital-MAR/index.html"
+    },
+    {
+      "route": "/Apps/carehome-suite/*",
+      "serve": "/Apps/carehome-suite/index.html"
+    }
+  ],
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/static/*", "/assets/*", "/*.css", "/*.js"]
+  },
+  "responseOverrides": {
+    "404": {
+      "rewrite": "/index.html",
+      "statusCode": 200
+    }
+  },
+  "globalHeaders": {
+    "Cache-Control": "no-cache, no-store, must-revalidate"
+  }
+}
