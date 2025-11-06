@@ -49,7 +49,7 @@ jobs:
       - name: Build CareHome Suite App
         run: |
           echo "Building CareHome Suite app..."
-          cd "../carehome-suite"
+          cd "../../Apps/carehome-suite"
           npm install
           npm run build
           mkdir -p ../../dist/Apps/carehome-suite
