@@ -30,7 +30,10 @@ jobs:
         run: |
           npm install
           npm run build
-
+          
+      - name: Copy static web app config
+        run: cp staticwebapp.config.json dist/
+        
       # --- Build Digital-MAR app ---
       - name: Build Digital-MAR App
         run: |
