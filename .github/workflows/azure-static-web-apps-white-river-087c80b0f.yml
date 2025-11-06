@@ -14,8 +14,10 @@ jobs:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
     runs-on: ubuntu-latest
     name: Build and Deploy Job
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
         with:
           submodules: true
           lfs: false
@@ -28,26 +30,38 @@ jobs:
       # --- Build main site ---
       - name: Build Main Site
         run: |
+          echo "🔧 Building main site..."
           npm install
           npm run build
-        
+          echo "✅ Main site built successfully."
+
       # --- Build Digital-MAR app ---
       - name: Build Digital-MAR App
         run: |
+          echo "🚀 Building Digital-MAR app..."
           cd "Apps/Digital-MAR"
           npm install
           npm run build
           mkdir -p ../../dist/Apps/Digital-MAR
           cp -r dist/* ../../dist/Apps/Digital-MAR/
+          echo "✅ Digital-MAR copied to /dist/Apps/Digital-MAR"
 
       # --- Build CareHome Suite app ---
       - name: Build CareHome Suite App
         run: |
-          cd "Apps/carehome-suite"
+          echo "🚀 Building CareHome Suite app..."
+          cd "../../Apps/carehome-suite" || cd "Apps/carehome-suite"
           npm install
           npm run build
           mkdir -p ../../dist/Apps/carehome-suite
           cp -r dist/* ../../dist/Apps/carehome-suite/
+          echo "✅ CareHome Suite copied to /dist/Apps/carehome-suite"
+
+      # --- Verify build output ---
+      - name: Verify build results
+        run: |
+          echo "📂 Checking final build structure..."
+          ls -R dist
 
       # --- Deploy everything to Azure ---
       - name: Deploy to Azure Static Web Apps
@@ -71,3 +85,4 @@ jobs:
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_WHITE_RIVER_087C80B0F }}
           action: "close"
+
