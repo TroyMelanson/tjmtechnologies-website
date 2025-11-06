@@ -3,8 +3,8 @@ import React, { useState, FormEvent } from 'react';
 const DEMO_PASSWORD = 'ProjectTechnologies'; // Simple hardcoded password
 
 const demos = [
-  { id: 1, title: 'Care Home Suite', imageUrl: 'https://picsum.photos/500/300?random=20', link: '/Apps/carehome-suite/' },
-  { id: 2, title: 'Digital-MAR', imageUrl: 'https://picsum.photos/500/300?random=21', link: '/Apps/Digital-MAR/' },
+  { id: 1, title: 'Care Home Suite', imageUrl: 'https://picsum.photos/500/300?random=20', link: '/Apps/carehome-suite/index.html' },
+  { id: 2, title: 'Digital-MAR', imageUrl: 'https://picsum.photos/500/300?random=21', link: '/Apps/Digital-MAR/index.html' },
 ];
 
 const DemoCard: React.FC<{ title: string; imageUrl: string; link: string }> = ({ title, imageUrl, link }) => (
