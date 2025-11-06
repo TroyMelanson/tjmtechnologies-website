@@ -40,14 +40,15 @@ jobs:
           mkdir -p ../../dist/Apps/Digital-MAR
           cp -r dist/* ../../dist/Apps/Digital-MAR/
 
-      # --- Build CareHome Suite app ---
-      - name: Build CareHome Suite app
-        run: |
-          cd ../carehome-suite
-          npm install
-          npm run build
-          mkdir -p ../../dist/Apps/carehome-suite
-          cp -r dist/* ../../dist/Apps/carehome-suite/
+# --- Build CareHome Suite app ---
+- name: Build CareHome Suite app
+  run: |
+    cd "Apps/carehome-suite"
+    npm install
+    npm run build
+    mkdir -p ../../dist/Apps/carehome-suite
+    cp -r dist/* ../../dist/Apps/carehome-suite/
+
 
       # --- Deploy everything ---
       - name: Deploy to Azure Static Web Apps
