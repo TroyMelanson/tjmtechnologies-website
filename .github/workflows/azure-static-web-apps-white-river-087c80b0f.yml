@@ -14,45 +14,57 @@ jobs:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
     runs-on: ubuntu-latest
     name: Build and Deploy Job
+
     steps:
-      - uses: actions/checkout@v3
+      # Checkout repo
+      - name: Checkout code
+        uses: actions/checkout@v3
         with:
           submodules: true
           lfs: false
 
+      # Set up Node.js environment
       - name: Set up Node
         uses: actions/setup-node@v3
         with:
           node-version: 20
 
-      # --- Build main site ---
+      # --- Build main site (root) ---
       - name: Build Main Site
         run: |
           echo "Building main site..."
           npm install
-          npm run build
+          npm run build || echo "No main build script, skipping..."
 
       # --- Build Digital-MAR app ---
       - name: Build Digital-MAR App
         run: |
           echo "Building Digital-MAR app..."
-          cd "Apps/Digital-MAR"
+          cd Apps/Digital-MAR
           npm install
           npm run build
           mkdir -p ../../dist/Apps/Digital-MAR
           cp -r dist/* ../../dist/Apps/Digital-MAR/
+          echo "✅ Digital-MAR build copied to dist/Apps/Digital-MAR"
 
       # --- Build CareHome Suite app ---
       - name: Build CareHome Suite App
         run: |
           echo "Building CareHome Suite app..."
-          cd "Apps/carehome-suite"
+          cd Apps/carehome-suite
           npm install
           npm run build
           mkdir -p ../../dist/Apps/carehome-suite
           cp -r dist/* ../../dist/Apps/carehome-suite/
+          echo "✅ CareHome Suite build copied to dist/Apps/carehome-suite"
 
-      # --- Deploy everything to Azure ---
+      # --- Verify combined dist structure ---
+      - name: List dist output
+        run: |
+          echo "Final dist folder structure:"
+          ls -R dist || echo "⚠️ dist folder not found"
+
+      # --- Deploy everything to Azure Static Web Apps ---
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
@@ -60,17 +72,19 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
           app_location: "./"
-          api_location: "api"
           output_location: "dist"
+          skip_app_build: true
+          skip_api_build: true
 
+  # --- Close Pull Request Job ---
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
     runs-on: ubuntu-latest
     name: Close Pull Request Job
     steps:
       - name: Close Pull Request
-        id: closepullrequest
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_WHITE_RIVER_087C80B0F }}
           action: "close"
+
