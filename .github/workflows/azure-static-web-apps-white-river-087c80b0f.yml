@@ -14,6 +14,7 @@ jobs:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
     runs-on: ubuntu-latest
     name: Build and Deploy Job
+
     steps:
       - uses: actions/checkout@v3
         with:
@@ -25,7 +26,7 @@ jobs:
         with:
           node-version: 20
 
-      # --- Build main site ---
+      # --- Build Main Site ---
       - name: Build Main Site
         run: |
           echo "Building main site..."
@@ -51,12 +52,6 @@ jobs:
           npm run build
           mkdir -p ../../dist/Apps/carehome-suite
           cp -r dist/* ../../dist/Apps/carehome-suite/
-
-      # --- Verify structure before deploy ---
-      - name: List final deployment files
-        run: |
-          echo "==== Final /dist directory structure ===="
-          find dist || tree dist
 
       # --- Deploy everything to Azure ---
       - name: Deploy to Azure Static Web Apps
