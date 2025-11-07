@@ -36,7 +36,7 @@ jobs:
       - name: Build Digital-MAR App
         run: |
           echo "Building Digital-MAR app..."
-          cd "Apps/Digital-MAR"
+          cd Apps/Digital-MAR
           npm install
           npm run build
           mkdir -p ../../dist/Apps/Digital-MAR
@@ -46,7 +46,7 @@ jobs:
       - name: Build CareHome Suite App
         run: |
           echo "Building CareHome Suite app..."
-          cd "../../Apps/carehome-suite"
+          cd Apps/carehome-suite
           npm install
           npm run build
           mkdir -p ../../dist/Apps/carehome-suite
@@ -56,7 +56,7 @@ jobs:
       - name: List final deployment files
         run: |
           echo "==== Final /dist directory structure ===="
-          tree dist || find dist
+          find dist || tree dist
 
       # --- Deploy everything to Azure ---
       - name: Deploy to Azure Static Web Apps
