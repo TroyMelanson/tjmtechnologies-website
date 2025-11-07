@@ -40,6 +40,8 @@ jobs:
           cd Apps/Digital-MAR
           npm install
           npm run build
+          mkdir -p ../../dist/Apps/Digital-MAR
+          cp -r dist/* ../../dist/Apps/Digital-MAR/
           cd ../..
 
       # --- Build CareHome Suite app ---
@@ -49,7 +51,15 @@ jobs:
           cd Apps/carehome-suite
           npm install
           npm run build
+          mkdir -p ../../dist/Apps/carehome-suite
+          cp -r dist/* ../../dist/Apps/carehome-suite/
           cd ../..
+
+      # --- Verify build outputs ---
+      - name: Verify dist folders
+        run: |
+          echo "Verifying dist folders..."
+          ls -R dist || echo "⚠️ dist folder not found!"
 
       # --- Deploy everything to Azure ---
       - name: Deploy to Azure Static Web Apps
