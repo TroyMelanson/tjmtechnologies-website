@@ -1,4 +1,5 @@
 {
+  "trailingSlash": "always",
   "routes": [
     {
       "route": "/Apps/carehome-suite/*",
