@@ -1,23 +1,19 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import path from 'path'
 
-// ✅ This config ensures proper building for Azure Static Web Apps
 export default defineConfig({
   plugins: [react()],
-  root: '.', // project root (current folder)
-  base: './', // ensures all assets are relative (important for subpath deployments)
+  root: '.', // base path for your app
   build: {
-    outDir: 'dist', // 👈 Azure expects the built site here
-    emptyOutDir: true, // clears old builds before each new one
-    sourcemap: false, // optional, can set true for debugging
-    rollupOptions: {
-      output: {
-        manualChunks: undefined, // disables aggressive code splitting for simplicity
-      },
+    outDir: 'dist', // ✅ build into /Apps/carehome-suite/dist
+    emptyOutDir: true,
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
     },
   },
-  server: {
-    port: 5173,
-    open: true,
-  },
+  base: './', // ✅ ensure relative paths work in Azure
 })
+
