@@ -7,7 +7,11 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
       // This is the crucial line that tells the app its deployed path
-      base: '/Apps/carehome-suite/',
+      base: '/Apps/Digital-MAR/',
+      build: {
+        outDir: '../../dist/Apps/Digital-MAR',
+        emptyOutDir: true,
+      },
       server: {
         port: 3000,
         host: '0.0.0.0',

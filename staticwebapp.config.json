@@ -1,4 +1,14 @@
 {
+  "routes": [
+    {
+      "route": "/Apps/carehome-suite/*",
+      "rewrite": "/Apps/carehome-suite/index.html"
+    },
+    {
+      "route": "/Apps/Digital-MAR/*",
+      "rewrite": "/Apps/Digital-MAR/index.html"
+    }
+  ],
   "navigationFallback": {
     "rewrite": "/index.html",
     "exclude": ["/Apps/*"]
