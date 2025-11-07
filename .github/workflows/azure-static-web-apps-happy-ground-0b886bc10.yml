@@ -37,7 +37,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
           app_location: "Apps/carehome-suite"
-          output_location: "Apps/carehome-suite/dist"
+          output_location: "dist"  # ✅ changed from Apps/carehome-suite/dist
 
   close_pull_request:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
