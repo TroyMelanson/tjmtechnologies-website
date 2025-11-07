@@ -1,31 +1,23 @@
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { defineConfig, loadEnv } from 'vite';
-import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
 
-export default defineConfig(({ mode }) => {
-    const env = loadEnv(mode, '.', '');
-    return {
-      // This is the crucial line that tells the app its deployed path
-      base: '/Apps/Digital-MAR/',
-      build: {
-        outDir: '../../dist/Apps/Digital-MAR',
-        emptyOutDir: true,
+// ✅ This config ensures proper building for Azure Static Web Apps
+export default defineConfig({
+  plugins: [react()],
+  root: '.', // project root (current folder)
+  base: './', // ensures all assets are relative (important for subpath deployments)
+  build: {
+    outDir: 'dist', // 👈 Azure expects the built site here
+    emptyOutDir: true, // clears old builds before each new one
+    sourcemap: false, // optional, can set true for debugging
+    rollupOptions: {
+      output: {
+        manualChunks: undefined, // disables aggressive code splitting for simplicity
       },
-      server: {
-        port: 3000,
-        host: '0.0.0.0',
-      },
-      plugins: [react()],
-      define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
-      },
-      resolve: {
-        alias: {
-          // Replaced `__dirname` which is not available in ES modules
-          '@': path.dirname(fileURLToPath(import.meta.url)),
-        }
-      }
-    };
-});
+    },
+  },
+  server: {
+    port: 5173,
+    open: true,
+  },
+})
