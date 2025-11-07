@@ -40,8 +40,7 @@ jobs:
           cd Apps/Digital-MAR
           npm install
           npm run build
-          mkdir -p ../../dist/Apps/Digital-MAR
-          cp -r dist/* ../../dist/Apps/Digital-MAR/
+          cd ../..
 
       # --- Build CareHome Suite app ---
       - name: Build CareHome Suite App
@@ -50,8 +49,7 @@ jobs:
           cd Apps/carehome-suite
           npm install
           npm run build
-          mkdir -p ../../dist/Apps/carehome-suite
-          cp -r dist/* ../../dist/Apps/carehome-suite/
+          cd ../..
 
       # --- Deploy everything to Azure ---
       - name: Deploy to Azure Static Web Apps
