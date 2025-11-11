@@ -1,6 +1,6 @@
 import React, { useState, useMemo, FC, useCallback, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Employee, Shift, Expense, ViewType, Resident, Allowance, ExpenseForecast, UserRole, Room, Tenancy } from './types';
+import { Employee, Shift, Expense, ViewType, Resident, Allowance, ExpenseForecast, UserRole, Room, Tenancy, TimeOffRequest } from './types';
 
 declare var XLSX: any;
 
@@ -84,6 +84,11 @@ const initialForecasts: ExpenseForecast[] = [
     { id: `${new Date().getFullYear()}-${new Date().getMonth() + 1}-Groceries`, year: new Date().getFullYear(), month: new Date().getMonth() + 1, category: 'Groceries', amount: 2000 }
 ];
 
+const initialTimeOffRequests: TimeOffRequest[] = [
+    { id: 'tor1', employeeId: '2', startDate: new Date(new Date().setDate(new Date().getDate() + 5)), endDate: new Date(new Date().setDate(new Date().getDate() + 7)), reason: 'Family matter', status: 'Pending' },
+    { id: 'tor2', employeeId: '5', startDate: new Date(new Date().setDate(new Date().getDate() - 10)), endDate: new Date(new Date().setDate(new Date().getDate() - 8)), reason: 'Vacation', status: 'Approved' },
+];
+
 // FIX: Replaced corrupted base64 string with a valid one.
 const LOGO_BASE64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABWSURBVHhe7c4xEQAgDMCwwv+P4fgyI5Ek720sAECgYgAIFQNAqBgAgokDIAaAEDCAGgAg0AEAFAyAEQDAIA8AEAwAMjEDwBAAwgEAIKQaAEAwAASAQBQAAgAAAABJRU5ErkJggg==';
 
@@ -147,16 +152,18 @@ const Modal: FC<{ isOpen: boolean; onClose: () => void; title: string; children:
     );
 };
 
-const LoginScreen: FC<{ onLogin: (role: UserRole) => void }> = ({ onLogin }) => {
+const LoginScreen: FC<{ onLogin: (role: UserRole) => void, onEmployeeLoginRequest: () => void }> = ({ onLogin, onEmployeeLoginRequest }) => {
     return (
         <div className="min-h-screen flex flex-col justify-center items-center bg-gray-900 text-white">
             <Card className="w-full max-w-sm text-center">
-                <img src={LOGO_BASE64} alt="TJM Technologies Logo" className="mx-auto mb-4 w-auto rounded-lg" style={{ filter: 'invert(1)' }} />
-                <p className="text-xl text-gray-300 mb-4">CareHome Business Suite</p>
+                <img src={LOGO_BASE64} alt="TJM Technologies Logo" className="mx-auto mb-2 h-24 w-auto rounded-lg" style={{ filter: 'invert(1)' }} />
+                <h1 className="text-2xl font-bold text-white">TJM Technologies</h1>
+                <p className="text-lg text-gray-400 mb-6">CareHome Business Suite</p>
                 <p className="text-gray-400 mb-8">Please select your role to continue</p>
                 <div className="space-y-4">
                     <Button onClick={() => onLogin('Owner')} className="w-full text-lg py-3">Login as Owner / Director</Button>
                     <Button onClick={() => onLogin('Supervisor')} variant="secondary" className="w-full text-lg py-3">Login as Supervisor</Button>
+                    <Button onClick={onEmployeeLoginRequest} variant="secondary" className="w-full text-lg py-3">Login as Employee</Button>
                 </div>
                 <p className="text-xs text-gray-500 mt-8">This is a simulated login for demonstration purposes.</p>
             </Card>
@@ -164,7 +171,43 @@ const LoginScreen: FC<{ onLogin: (role: UserRole) => void }> = ({ onLogin }) => 
     );
 };
 
-const FinancialDashboard: FC<{ tenancies: Tenancy[], shifts: Shift[], expenses: Expense[], employees: Employee[], allowances: Allowance[] }> = ({ tenancies, shifts, expenses, employees, allowances }) => {
+const EmployeeLoginModal: FC<{ isOpen: boolean; onClose: () => void; employees: Employee[]; onLogin: (employee: Employee) => void }> = ({ isOpen, onClose, employees, onLogin }) => {
+    const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
+
+    useEffect(() => {
+        if (employees.length > 0) {
+            setSelectedEmployeeId(employees[0].id);
+        }
+    }, [employees]);
+
+    const handleLogin = () => {
+        const employee = employees.find(e => e.id === selectedEmployeeId);
+        if (employee) {
+            onLogin(employee);
+        }
+    };
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Select Employee Profile">
+            <div className="space-y-4">
+                <p>Please select your name from the list to log in.</p>
+                <div>
+                    <label className="block text-sm font-medium text-gray-300">Employee</label>
+                    <select value={selectedEmployeeId} onChange={e => setSelectedEmployeeId(e.target.value)} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white">
+                        {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                    </select>
+                </div>
+                <div className="flex justify-end gap-2 pt-4">
+                    <Button onClick={onClose} variant="secondary">Cancel</Button>
+                    <Button onClick={handleLogin}>Login</Button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
+
+const FinancialDashboard: FC<{ tenancies: Tenancy[], shifts: Shift[], expenses: Expense[], employees: Employee[], allowances: Allowance[], timeOffRequests: TimeOffRequest[], onUpdateTimeOffRequest: (id: string, status: 'Approved' | 'Denied') => void }> = ({ tenancies, shifts, expenses, employees, allowances, timeOffRequests, onUpdateTimeOffRequest }) => {
     const [filter, setFilter] = useState('This Month');
     const dateRanges = useMemo(() => {
         const now = new Date();
@@ -260,11 +303,17 @@ const FinancialDashboard: FC<{ tenancies: Tenancy[], shifts: Shift[], expenses: 
             return acc;
         }, { revenue: 0, salaries: 0, expenses: 0, net: 0 });
     }, [financialData]);
+
+    const pendingRequests = useMemo(() => {
+        return timeOffRequests
+            .filter(r => r.status === 'Pending')
+            .map(r => ({ ...r, employeeName: employees.find(e => e.id === r.employeeId)?.name || 'Unknown' }));
+    }, [timeOffRequests, employees]);
     
     return (
         <div className="space-y-6 animate-fade-in">
             <div className="flex justify-between items-center">
-                 <h2 className="text-3xl font-bold text-white">Financial Dashboard</h2>
+                 <h2 className="text-3xl font-bold text-white">Dashboard</h2>
                  <div className="flex gap-2 bg-gray-700 p-1 rounded-lg">
                     {['Today', 'This Week', 'This Month', 'This Year', 'All Time'].map(f => (
                         <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1 text-sm font-semibold rounded-md transition ${filter === f ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-600'}`}>
@@ -291,29 +340,47 @@ const FinancialDashboard: FC<{ tenancies: Tenancy[], shifts: Shift[], expenses: 
                     <p className={`text-3xl font-bold ${totals.net >= 0 ? 'text-green-400' : 'text-red-400'}`}>${totals.net.toFixed(2)}</p>
                 </Card>
             </div>
-            <Card className="h-96">
-                <h3 className="text-xl font-semibold mb-4 text-white">Daily Financials</h3>
-                 {financialData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="90%">
-                        <LineChart data={financialData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
-                            <XAxis dataKey="date" stroke="#A0AEC0" />
-                            <YAxis stroke="#A0AEC0" tickFormatter={(value) => `$${value}`} />
-                            <Tooltip contentStyle={{ backgroundColor: '#2D3748', border: 'none', borderRadius: '0.5rem' }} labelStyle={{ color: '#E2E8F0' }} />
-                            <Legend wrapperStyle={{ color: '#E2E8F0' }} />
-                            <Line type="monotone" dataKey="Revenue" stroke="#2DD4BF" strokeWidth={2} dot={false} />
-                            <Line type="monotone" dataKey="Salaries" stroke="#FBBF24" strokeWidth={2} dot={false} />
-                            <Line type="monotone" dataKey="Expenses" stroke="#FB923C" strokeWidth={2} dot={false} />
-                            <Line type="monotone" dataKey="Net" stroke="#4ADE80" strokeWidth={2} dot={false} />
-                        </LineChart>
-                    </ResponsiveContainer>
-                ) : <p className="text-center text-gray-500">No financial data for this period.</p>}
-            </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                 <Card className="h-96 lg:col-span-2">
+                    <h3 className="text-xl font-semibold mb-4 text-white">Daily Financials</h3>
+                    {financialData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="90%">
+                            <LineChart data={financialData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
+                                <XAxis dataKey="date" stroke="#A0AEC0" />
+                                <YAxis stroke="#A0AEC0" tickFormatter={(value) => `$${value}`} />
+                                <Tooltip contentStyle={{ backgroundColor: '#2D3748', border: 'none', borderRadius: '0.5rem' }} labelStyle={{ color: '#E2E8F0' }} />
+                                <Legend wrapperStyle={{ color: '#E2E8F0' }} />
+                                <Line type="monotone" dataKey="Revenue" stroke="#2DD4BF" strokeWidth={2} dot={false} />
+                                <Line type="monotone" dataKey="Salaries" stroke="#FBBF24" strokeWidth={2} dot={false} />
+                                <Line type="monotone" dataKey="Expenses" stroke="#FB923C" strokeWidth={2} dot={false} />
+                                <Line type="monotone" dataKey="Net" stroke="#4ADE80" strokeWidth={2} dot={false} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    ) : <p className="text-center text-gray-500">No financial data for this period.</p>}
+                </Card>
+                <Card className="h-96">
+                    <h3 className="text-xl font-semibold mb-4 text-white">Pending Time Off Requests</h3>
+                    <div className="space-y-3 overflow-y-auto h-[calc(100%-2.5rem)] pr-2">
+                        {pendingRequests.length > 0 ? pendingRequests.map(req => (
+                            <div key={req.id} className="bg-gray-700 p-3 rounded-lg">
+                                <p className="font-semibold text-indigo-300">{req.employeeName}</p>
+                                <p className="text-sm text-gray-300">{formatDate(req.startDate)} to {formatDate(req.endDate)}</p>
+                                {req.reason && <p className="text-xs text-gray-400 mt-1 italic">"{req.reason}"</p>}
+                                <div className="flex gap-2 mt-2">
+                                    <Button onClick={() => onUpdateTimeOffRequest(req.id, 'Approved')} className="flex-1 py-1 text-sm !bg-green-600 hover:!bg-green-700">Approve</Button>
+                                    <Button onClick={() => onUpdateTimeOffRequest(req.id, 'Denied')} variant="danger" className="flex-1 py-1 text-sm">Deny</Button>
+                                </div>
+                            </div>
+                        )) : <p className="text-center text-gray-500">No pending requests.</p>}
+                    </div>
+                </Card>
+            </div>
         </div>
     );
 };
 
-const Scheduler: FC<{ employees: Employee[], shifts: Shift[], onShiftsAdd: (shifts: Omit<Shift, 'id'>[]) => void, onShiftUpdate: (shift: Shift) => void, onShiftAdd: (shift: Omit<Shift, 'id'>) => void, onShiftDelete: (shiftId: string) => void }> = ({ employees, shifts, onShiftsAdd, onShiftUpdate, onShiftAdd, onShiftDelete }) => {
+const Scheduler: FC<{ employees: Employee[], shifts: Shift[], timeOffRequests: TimeOffRequest[], onShiftsAdd: (shifts: Omit<Shift, 'id'>[]) => void, onShiftUpdate: (shift: Shift) => void, onShiftAdd: (shift: Omit<Shift, 'id'>) => void, onShiftDelete: (shiftId: string) => void }> = ({ employees, shifts, timeOffRequests, onShiftsAdd, onShiftUpdate, onShiftAdd, onShiftDelete }) => {
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
@@ -388,8 +455,8 @@ const Scheduler: FC<{ employees: Employee[], shifts: Shift[], onShiftsAdd: (shif
                 </div>
             </Card>
 
-            {view === 'day' && <DailySchedulerView employees={employees} shifts={shifts} selectedDate={selectedDate} onEditShift={handleEditClick} onDeleteShift={onShiftDelete} />}
-            {view === 'week' && <WeeklySchedulerView employees={employees} shifts={shifts} weekDays={weekDays} onEditShift={handleEditClick} onAddShift={(date, empId) => handleAddClick(date, empId)} onDeleteShift={onShiftDelete} />}
+            {view === 'day' && <DailySchedulerView employees={employees} shifts={shifts} selectedDate={selectedDate} timeOffRequests={timeOffRequests} onEditShift={handleEditClick} onDeleteShift={onShiftDelete} />}
+            {view === 'week' && <WeeklySchedulerView employees={employees} shifts={shifts} weekDays={weekDays} timeOffRequests={timeOffRequests} onEditShift={handleEditClick} onAddShift={(date, empId) => handleAddClick(date, empId)} onDeleteShift={onShiftDelete} />}
            
             <ShiftFormModal 
                 isOpen={isAddModalOpen}
@@ -414,7 +481,23 @@ const Scheduler: FC<{ employees: Employee[], shifts: Shift[], onShiftsAdd: (shif
     );
 };
 
-const DailySchedulerView: FC<{employees: Employee[], shifts: Shift[], selectedDate: Date, onEditShift: (shift: Shift) => void, onDeleteShift: (shiftId: string) => void}> = ({employees, shifts, selectedDate, onEditShift, onDeleteShift}) => {
+const isEmployeeOnLeave = (employeeId: string, date: Date, timeOffRequests: TimeOffRequest[]) => {
+    const checkDate = new Date(date);
+    checkDate.setHours(12, 0, 0, 0); // Use midday to avoid timezone edge cases
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0,0,0,0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23,59,59,999);
+
+    return timeOffRequests.some(req => 
+        req.employeeId === employeeId &&
+        req.status === 'Approved' &&
+        new Date(req.startDate) <= endOfDay &&
+        new Date(req.endDate) >= startOfDay
+    );
+};
+
+const DailySchedulerView: FC<{employees: Employee[], shifts: Shift[], selectedDate: Date, timeOffRequests: TimeOffRequest[], onEditShift: (shift: Shift) => void, onDeleteShift: (shiftId: string) => void}> = ({employees, shifts, selectedDate, timeOffRequests, onEditShift, onDeleteShift}) => {
      const shiftsForDay = useMemo(() => {
         const startOfDay = new Date(selectedDate);
         startOfDay.setHours(0, 0, 0, 0);
@@ -436,10 +519,17 @@ const DailySchedulerView: FC<{employees: Employee[], shifts: Shift[], selectedDa
                 ))}
             </div>
             <div className="space-y-4 pt-4 relative">
-                {employees.map(employee => (
+                {employees.map(employee => {
+                    const onLeave = isEmployeeOnLeave(employee.id, selectedDate, timeOffRequests);
+                    return (
                     <div key={employee.id} className="flex items-center">
                         <div className="w-32 pr-4 text-right font-semibold text-indigo-300">{employee.name}</div>
                         <div className="flex-1 bg-gray-700 h-10 rounded relative">
+                            {onLeave && (
+                                <div className="absolute inset-0 bg-gray-500/50 flex items-center justify-center text-sm font-semibold text-gray-200 rounded z-10">
+                                    ON LEAVE
+                                </div>
+                            )}
                             {shiftsForDay.filter(s => s.employeeId === employee.id).map(shift => {
                                 const dayStartMs = new Date(selectedDate).setHours(0,0,0,0);
                                 const startMinutes = Math.max(0, (shift.start.getTime() - dayStartMs) / (1000 * 60));
@@ -472,13 +562,13 @@ const DailySchedulerView: FC<{employees: Employee[], shifts: Shift[], selectedDa
                             })}
                         </div>
                     </div>
-                ))}
+                )})}
             </div>
         </Card>
     );
 };
 
-const WeeklySchedulerView: FC<{employees: Employee[], shifts: Shift[], weekDays: Date[], onEditShift: (shift: Shift) => void, onAddShift: (date: Date, employeeId: string) => void, onDeleteShift: (shiftId: string) => void}> = ({employees, shifts, weekDays, onEditShift, onAddShift, onDeleteShift}) => {
+const WeeklySchedulerView: FC<{employees: Employee[], shifts: Shift[], weekDays: Date[], timeOffRequests: TimeOffRequest[], onEditShift: (shift: Shift) => void, onAddShift: (date: Date, employeeId: string) => void, onDeleteShift: (shiftId: string) => void}> = ({employees, shifts, weekDays, timeOffRequests, onEditShift, onAddShift, onDeleteShift}) => {
     return (
         <Card>
             <div className="grid grid-cols-8">
@@ -494,12 +584,17 @@ const WeeklySchedulerView: FC<{employees: Employee[], shifts: Shift[], weekDays:
                     <React.Fragment key={emp.id}>
                         <div className="p-2 border-b border-r border-gray-700 font-semibold text-indigo-300">{emp.name}</div>
                         {weekDays.map(day => {
-                             const startOfDay = new Date(day).setHours(0,0,0,0);
-                             const endOfDay = new Date(day).setHours(23,59,59,999);
+// FIX: `setHours` returns a number, not a Date. Initialize Date objects first, then modify them.
+                             const startOfDay = new Date(day);
+                             startOfDay.setHours(0,0,0,0);
+                             const endOfDay = new Date(day);
+                             endOfDay.setHours(23,59,59,999);
                              const dayShifts = shifts.filter(s => s.employeeId === emp.id && s.start < endOfDay && s.end > startOfDay);
+                             const onLeave = isEmployeeOnLeave(emp.id, day, timeOffRequests);
                              
                              return (
-                                <div key={day.toISOString()} onClick={() => onAddShift(day, emp.id)} className="p-2 border-b border-r border-gray-700 last:border-r-0 min-h-[6rem] space-y-1 cursor-pointer hover:bg-gray-700/50 transition-colors">
+                                <div key={day.toISOString()} onClick={() => !onLeave && onAddShift(day, emp.id)} className={`p-2 border-b border-r border-gray-700 last:border-r-0 min-h-[6rem] space-y-1 transition-colors ${onLeave ? 'bg-gray-600/50' : 'cursor-pointer hover:bg-gray-700/50'}`}>
+                                    {onLeave && <div className="text-center text-xs text-gray-300 font-semibold">ON LEAVE</div>}
                                     {dayShifts.map(shift => (
                                         <div key={shift.id} onClick={(e) => { e.stopPropagation(); onEditShift(shift); }} className="bg-indigo-600 text-white text-xs p-1 rounded flex items-center justify-between group cursor-pointer hover:bg-indigo-500">
                                             <span>
@@ -1656,8 +1751,154 @@ const AllowanceFormModal: FC<{isOpen: boolean, onClose: () => void, residents: R
         </Modal>
     );
 };
+
+const TimeOffRequestFormModal: FC<{ isOpen: boolean, onClose: () => void, onSubmit: (data: Omit<TimeOffRequest, 'id' | 'employeeId' | 'status'>) => void }> = ({isOpen, onClose, onSubmit}) => {
+    const [startDate, setStartDate] = useState(formatDate(new Date()));
+    const [endDate, setEndDate] = useState(formatDate(new Date()));
+    const [reason, setReason] = useState('');
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const start = new Date(startDate + 'T00:00:00');
+        const end = new Date(endDate + 'T00:00:00');
+        if (end < start) {
+            alert('End date cannot be before start date.');
+            return;
+        }
+        onSubmit({ startDate: start, endDate: end, reason });
+    };
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Request Time Off">
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300">Start Date</label>
+                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
+                    </div>
+                     <div>
+                        <label className="block text-sm font-medium text-gray-300">End Date</label>
+                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-300">Reason (optional)</label>
+                    <textarea value={reason} onChange={e => setReason(e.target.value)} rows={3} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
+                </div>
+                <div className="flex justify-end gap-2 pt-4">
+                    <Button onClick={onClose} variant="secondary">Cancel</Button>
+                    <Button type="submit">Submit Request</Button>
+                </div>
+            </form>
+        </Modal>
+    );
+};
+
+
+const EmployeePortal: FC<{ employee: Employee, shifts: Shift[], timeOffRequests: TimeOffRequest[], onTimeOffRequest: (request: Omit<TimeOffRequest, 'id' | 'employeeId' | 'status'>) => void }> = ({ employee, shifts, timeOffRequests, onTimeOffRequest }) => {
+    const [isPreRequestModalOpen, setIsPreRequestModalOpen] = useState(false);
+    const [isRequestFormOpen, setIsRequestFormOpen] = useState(false);
+    
+    const upcomingShifts = useMemo(() => {
+        const now = new Date();
+        const nextSevenDays = new Date();
+        nextSevenDays.setDate(now.getDate() + 7);
+        return shifts
+            .filter(s => s.employeeId === employee.id && s.start >= now && s.start <= nextSevenDays)
+            .sort((a,b) => a.start.getTime() - b.start.getTime());
+    }, [shifts, employee.id]);
+
+    const myTimeOffRequests = useMemo(() => {
+        return timeOffRequests
+            .filter(r => r.employeeId === employee.id)
+            .sort((a,b) => b.startDate.getTime() - a.startDate.getTime());
+    }, [timeOffRequests, employee.id]);
+
+    const handleRequestTimeOff = () => {
+        setIsPreRequestModalOpen(true);
+    };
+    
+    const handlePreRequestContinue = () => {
+        setIsPreRequestModalOpen(false);
+        setIsRequestFormOpen(true);
+    }
+    
+    const handleTimeOffSubmit = (data: Omit<TimeOffRequest, 'id' | 'employeeId' | 'status'>) => {
+        onTimeOffRequest(data);
+        setIsRequestFormOpen(false);
+    }
+
+    const getStatusColor = (status: TimeOffRequest['status']) => {
+        switch(status) {
+            case 'Approved': return 'text-green-400';
+            case 'Denied': return 'text-red-400';
+            case 'Pending': return 'text-yellow-400';
+        }
+    };
+    
+    return (
+        <div className="space-y-6 animate-fade-in">
+             <div className="flex justify-between items-center">
+                <h2 className="text-3xl font-bold text-white">My Portal</h2>
+                <Button onClick={handleRequestTimeOff}>Request Time Off</Button>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <Card className="lg:col-span-1">
+                     <h3 className="text-xl font-semibold mb-4 text-white">My Information</h3>
+                     <div className="space-y-2 text-gray-300">
+                        <p><span className="font-semibold text-gray-400">Name:</span> {employee.name}</p>
+                        <p><span className="font-semibold text-gray-400">Position:</span> {employee.position}</p>
+                        <p><span className="font-semibold text-gray-400">Pay Rate:</span> ${employee.payRate.toFixed(2)} / hour</p>
+                        <p><span className="font-semibold text-gray-400">Hire Date:</span> {formatDate(employee.hireDate)}</p>
+                     </div>
+                </Card>
+                 <Card className="lg:col-span-2">
+                     <h3 className="text-xl font-semibold mb-4 text-white">Upcoming Shifts (Next 7 Days)</h3>
+                     <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {upcomingShifts.length > 0 ? upcomingShifts.map(s => (
+                            <div key={s.id} className="bg-gray-700 p-3 rounded-md">
+                                <p className="font-semibold text-indigo-300">{s.start.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
+                                <p className="text-gray-300">{formatTime(s.start)} - {formatTime(s.end)}</p>
+                            </div>
+                        )) : <p className="text-gray-500">No upcoming shifts in the next 7 days.</p>}
+                     </div>
+                 </Card>
+            </div>
+            <Card>
+                <h3 className="text-xl font-semibold mb-4 text-white">My Time Off Requests</h3>
+                <div className="max-h-80 overflow-y-auto">
+                     <ul className="divide-y divide-gray-700">
+                        {myTimeOffRequests.map(req => (
+                            <li key={req.id} className="py-3 flex justify-between items-center">
+                                <div>
+                                    <p className="text-white">{formatDate(req.startDate)} to {formatDate(req.endDate)}</p>
+                                    {req.reason && <p className="text-sm text-gray-400 italic">"{req.reason}"</p>}
+                                </div>
+                                <p className={`font-bold text-lg ${getStatusColor(req.status)}`}>{req.status}</p>
+                            </li>
+                        ))}
+                        {myTimeOffRequests.length === 0 && <p className="text-center text-gray-500 py-4">You have not submitted any time off requests.</p>}
+                     </ul>
+                </div>
+            </Card>
+            <Modal isOpen={isPreRequestModalOpen} onClose={() => setIsPreRequestModalOpen(false)} title="Important Notice">
+                <div className="space-y-4">
+                    <p className="text-lg text-gray-300">Please ensure you have spoken with your supervisor for approval before submitting a time off request in the system.</p>
+                    <p className="text-sm text-gray-400">Submitting a request here does not guarantee approval. It is a formal record of a verbally agreed-upon arrangement.</p>
+                    <div className="flex justify-end gap-2 pt-4">
+                        <Button onClick={() => setIsPreRequestModalOpen(false)} variant="secondary">Cancel</Button>
+                        <Button onClick={handlePreRequestContinue}>I Understand</Button>
+                    </div>
+                </div>
+            </Modal>
+            <TimeOffRequestFormModal isOpen={isRequestFormOpen} onClose={() => setIsRequestFormOpen(false)} onSubmit={handleTimeOffSubmit} />
+        </div>
+    );
+};
+
 const App: FC = () => {
     const [userRole, setUserRole] = useState<UserRole | null>(null);
+    const [loggedInEmployee, setLoggedInEmployee] = useState<Employee | null>(null);
 
     const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
     const [shifts, setShifts] = useState<Shift[]>(initialShifts);
@@ -1668,13 +1909,23 @@ const App: FC = () => {
     const [forecasts, setForecasts] = useState<ExpenseForecast[]>(initialForecasts);
     const [rooms, setRooms] = useState<Room[]>(initialRooms);
     const [tenancies, setTenancies] = useState<Tenancy[]>(initialTenancies);
+    const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>(initialTimeOffRequests);
 
     const [currentView, setCurrentView] = useState<ViewType>('Dashboard');
     const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+    const [isEmployeeLoginModalOpen, setIsEmployeeLoginModalOpen] = useState(false);
 
     useEffect(() => {
-        if(userRole === 'Supervisor' && ['Dashboard', 'Capital Expenses', 'Salary Expenses', 'Revenue'].includes(currentView)) {
-            setCurrentView('Scheduler');
+        if (userRole === 'Supervisor') {
+             if (['Dashboard', 'Capital Expenses', 'Salary Expenses', 'Revenue', 'My Portal'].includes(currentView)) {
+                setCurrentView('Scheduler');
+            }
+        } else if (userRole === 'Employee') {
+            setCurrentView('My Portal');
+        } else if (userRole === 'Owner') {
+             if(currentView === 'My Portal') {
+                setCurrentView('Dashboard');
+             }
         }
     }, [userRole, currentView]);
 
@@ -1742,6 +1993,22 @@ const App: FC = () => {
     }
     const addTenancy = (tenancy: Omit<Tenancy, 'id'>) => setTenancies(prev => [...prev, {...tenancy, id: Date.now().toString()}]);
     const updateTenancy = (updatedTenancy: Tenancy) => setTenancies(prev => prev.map(t => t.id === updatedTenancy.id ? updatedTenancy : t));
+
+    // FIX: Corrected the parameter type to match the props of the component it's passed to.
+    const addTimeOffRequest = (request: Omit<TimeOffRequest, 'id' | 'employeeId' | 'status'>) => {
+        if (!loggedInEmployee) return;
+        const newRequest: TimeOffRequest = {
+            ...request,
+            id: `tor_${Date.now()}`,
+            employeeId: loggedInEmployee.id,
+            status: 'Pending'
+        };
+        setTimeOffRequests(prev => [...prev, newRequest]);
+    };
+    
+    const updateTimeOffRequestStatus = (id: string, status: 'Approved' | 'Denied') => {
+        setTimeOffRequests(prev => prev.map(req => req.id === id ? { ...req, status } : req));
+    };
     
     const handleExport = () => {
         exportToExcel({
@@ -1752,11 +2019,23 @@ const App: FC = () => {
             Rooms: rooms,
             Tenancies: tenancies.map(t => ({...t, residentName: residents.find(r => r.id === t.residentId)?.name, startDate: formatDate(t.startDate), endDate: t.endDate ? formatDate(t.endDate) : ''})),
             Residents: residents,
-            Allowances: allowances.map(a => ({...a, residentName: residents.find(r => r.id === a.residentId)?.name, date: formatDate(a.date)}))
+            Allowances: allowances.map(a => ({...a, residentName: residents.find(r => r.id === a.residentId)?.name, date: formatDate(a.date)})),
+            TimeOffRequests: timeOffRequests.map(r => ({...r, employeeName: employees.find(e => e.id === r.employeeId)?.name, startDate: formatDate(r.startDate), endDate: formatDate(r.endDate)}))
         });
         setIsExportModalOpen(false);
     };
 
+    const handleEmployeeLogin = (employee: Employee) => {
+        setLoggedInEmployee(employee);
+        setUserRole('Employee');
+        setIsEmployeeLoginModalOpen(false);
+    };
+    
+    const handleLogout = () => {
+        setUserRole(null);
+        setLoggedInEmployee(null);
+        setCurrentView('Dashboard');
+    };
 
     const NavButton: FC<{ view: ViewType, children: React.ReactNode }> = ({ view, children }) => {
         const isActive = currentView === view;
@@ -1770,9 +2049,9 @@ const App: FC = () => {
     const renderView = () => {
         switch (currentView) {
             case 'Dashboard':
-                return <FinancialDashboard tenancies={tenancies} shifts={shifts} expenses={expenses} employees={employees} allowances={allowances} />;
+                return <FinancialDashboard tenancies={tenancies} shifts={shifts} expenses={expenses} employees={employees} allowances={allowances} timeOffRequests={timeOffRequests} onUpdateTimeOffRequest={updateTimeOffRequestStatus} />;
             case 'Scheduler':
-                return <Scheduler employees={employees} shifts={shifts} onShiftsAdd={addShifts} onShiftAdd={addShift} onShiftUpdate={updateShift} onShiftDelete={deleteShift} />;
+                return <Scheduler employees={employees} shifts={shifts} timeOffRequests={timeOffRequests} onShiftsAdd={addShifts} onShiftAdd={addShift} onShiftUpdate={updateShift} onShiftDelete={deleteShift} />;
             case 'Employees':
                 return <EmployeeManager employees={employees} onEmployeeAdd={addEmployee} onEmployeeUpdate={updateEmployee} onEmployeeDelete={deleteEmployee} />;
             case 'Capital Expenses':
@@ -1793,32 +2072,57 @@ const App: FC = () => {
                             onResidentDelete={deleteResident} 
                             onAllowanceAdd={addAllowance} 
                             onAllowanceDelete={deleteAllowance} />;
+            case 'My Portal':
+                if (loggedInEmployee) {
+                    return <EmployeePortal employee={loggedInEmployee} shifts={shifts} timeOffRequests={timeOffRequests} onTimeOffRequest={addTimeOffRequest} />
+                }
+                return null;
             default:
                 return null;
         }
     };
     
     if (!userRole) {
-        return <LoginScreen onLogin={setUserRole} />;
+        return <>
+            <LoginScreen onLogin={setUserRole} onEmployeeLoginRequest={() => setIsEmployeeLoginModalOpen(true)} />
+            <EmployeeLoginModal isOpen={isEmployeeLoginModalOpen} onClose={() => setIsEmployeeLoginModalOpen(false)} employees={employees} onLogin={handleEmployeeLogin} />
+        </>;
     }
 
     return (
         <div className="min-h-screen text-gray-100 font-sans flex flex-col">
             <header className="bg-gray-800 shadow-md sticky top-0 z-40">
                 <nav className="container mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center py-2">
-                     <div className="flex items-center">
-                        <img src={LOGO_BASE64} alt="TJM Technologies Logo" className="h-16 w-auto rounded-md" style={{ filter: 'invert(1)' }} />
-                        <span className="text-xl font-normal text-gray-400 mx-3">|</span>
-                        <span className="font-semibold text-white text-lg">CareHome Business Suite</span>
+                     <div className="flex items-center gap-4">
+                        <img src={LOGO_BASE64} alt="TJM Technologies Logo" className="h-12 w-auto rounded-md" style={{ filter: 'invert(1)' }} />
+                        <div>
+                            <h1 className="font-semibold text-white text-lg">TJM Technologies</h1>
+                            <p className="text-sm text-gray-400">CareHome Business Suite</p>
+                        </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                        {userRole === 'Owner' && <NavButton view="Dashboard">Dashboard</NavButton>}
-                        <NavButton view="Scheduler">Scheduler</NavButton>
-                        <NavButton view="Employees">Employees</NavButton>
-                        {userRole === 'Owner' && <NavButton view="Capital Expenses">Capital Expenses</NavButton>}
-                        {userRole === 'Owner' && <NavButton view="Salary Expenses">Salary Expenses</NavButton>}
-                        {userRole === 'Owner' && <NavButton view="Revenue">Revenue</NavButton>}
+                    <div className="flex-1 flex justify-center items-center space-x-2">
+                       {userRole === 'Owner' && <>
+                            <NavButton view="Dashboard">Dashboard</NavButton>
+                            <NavButton view="Scheduler">Scheduler</NavButton>
+                            <NavButton view="Employees">Employees</NavButton>
+                            <NavButton view="Capital Expenses">Capital Expenses</NavButton>
+                            <NavButton view="Salary Expenses">Salary Expenses</NavButton>
+                            <NavButton view="Revenue">Revenue</NavButton>
+                       </>}
+                        {userRole === 'Supervisor' && <>
+                            <NavButton view="Scheduler">Scheduler</NavButton>
+                            <NavButton view="Employees">Employees</NavButton>
+                        </>}
+                        {userRole === 'Employee' && <NavButton view="My Portal">My Portal</NavButton>}
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <div className="text-right">
+{/* FIX: Add defensive checks for loggedInEmployee properties to prevent potential runtime errors if the type is not correctly inferred. */}
+                           <p className="text-white font-semibold">{loggedInEmployee?.name ?? userRole}</p>
+                           <p className="text-xs text-gray-400">{loggedInEmployee?.position ?? 'Administrator'}</p>
+                        </div>
                         <Button onClick={() => setIsExportModalOpen(true)} variant="secondary">Export</Button>
+                        <Button onClick={handleLogout} variant="danger">Logout</Button>
                     </div>
                 </nav>
             </header>
@@ -1834,6 +2138,7 @@ const App: FC = () => {
                     <ul className="list-disc list-inside text-gray-300">
                         <li>Employees, Shifts, Expenses, Forecasts</li>
                         <li>Rooms, Tenancies, Residents, Allowances</li>
+                        <li>Time Off Requests</li>
                     </ul>
                      <div className="flex justify-end gap-2 pt-4">
                         <Button onClick={() => setIsExportModalOpen(false)} variant="secondary">Cancel</Button>
@@ -1844,5 +2149,3 @@ const App: FC = () => {
         </div>
     );
 };
-
-export default App;
