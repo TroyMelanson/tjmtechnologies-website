@@ -785,88 +785,118 @@ const CopyScheduleModal: FC<{
   );
 };
 
+// ShiftFormModal: full corrected component (replace the existing ShiftFormModal block)
 const ShiftFormModal: FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    shift: Shift | null;
-    employees: Employee[];
-    onSubmit: (data: Omit<Shift, 'id'> | Shift) => void;
-    selectedDate: Date;
-    initialData: { date: Date, employeeId: string } | null;
+  isOpen: boolean;
+  onClose: () => void;
+  shift: Shift | null;
+  employees: Employee[];
+  onSubmit: (data: Omit<Shift, 'id'> | Shift) => void;
+  selectedDate: Date;
+  initialData: { date: Date; employeeId: string } | null;
 }> = ({ isOpen, onClose, shift, employees, onSubmit, selectedDate, initialData }) => {
-    
-    useEffect(() => {
-        if (shift) {
-            setEmployeeId(shift.employeeId);
-            setStartTime(formatTime(shift.start));
-            setEndTime(formatTime(shift.end));
-            setShiftDate(formatDate(shift.start));
-        } else if (initialData) {
-            setEmployeeId(initialData.employeeId);
-            setShiftDate(formatDate(initialData.date));
-            setStartTime('08:00');
-            setEndTime('16:00');
-        } else {
-            setEmployeeId(employees.length > 0 ? employees[0].id : '');
-            setStartTime('08:00');
-            setEndTime('16:00');
-            setShiftDate(formatDate(selectedDate));
-        }
-    }, [shift, employees, isOpen, selectedDate, initialData]);
+  const [employeeId, setEmployeeId] = useState('');
+  const [startTime, setStartTime] = useState('08:00');
+  const [endTime, setEndTime] = useState('16:00');
+  const [shiftDate, setShiftDate] = useState(formatDate(selectedDate));
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        const baseDate = new Date(shiftDate + 'T00:00:00');
-        const [startH, startM] = startTime.split(':').map(Number);
-        const start = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate(), startH, startM);
+  useEffect(() => {
+    if (shift) {
+      setEmployeeId(shift.employeeId);
+      setStartTime(formatTime(shift.start));
+      setEndTime(formatTime(shift.end));
+      setShiftDate(formatDate(shift.start));
+    } else if (initialData) {
+      setEmployeeId(initialData.employeeId);
+      setShiftDate(formatDate(initialData.date));
+      setStartTime('08:00');
+      setEndTime('16:00');
+    } else {
+      setEmployeeId(employees.length > 0 ? employees[0].id : '');
+      setStartTime('08:00');
+      setEndTime('16:00');
+      setShiftDate(formatDate(selectedDate));
+    }
+  }, [shift, employees, isOpen, selectedDate, initialData]);
 
-        const [endH, endM] = endTime.split(':').map(Number);
-        const end = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate(), endH, endM);
-        
-        if (end <= start) {
-            end.setDate(end.getDate() + 1); // Handle overnight shifts
-        }
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const baseDate = new Date(shiftDate + 'T00:00:00');
+    const [startH, startM] = startTime.split(':').map(Number);
+    const start = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate(), startH, startM);
 
-        const shiftData = { employeeId, start, end };
-        if (shift) {
-            onSubmit({ ...shiftData, id: shift.id });
-        } else {
-            onSubmit(shiftData);
-        }
-    };
-    
-    return (
-        <Modal isOpen={isOpen} onClose={onClose} title={shift ? 'Edit Shift' : 'Add Shift'}>
-            <form onSubmit={handleSubmit} className="space-y-4">
-                 <div>
-                    <label className="block text-sm font-medium text-gray-300">Employee</label>
-                    <select value={employeeId} onChange={e => setEmployeeId(e.target.value)} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white">
-                        {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                    </select>
-                </div>
-                 <div>
-                    <label className="block text-sm font-medium text-gray-300">Date</label>
-                    <input type="date" value={shiftDate} onChange={e => setShiftDate(e.target.value)} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300">Start Time</label>
-                        <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300">End Time</label>
-                        <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
-                    </div>
-                </div>
-                <div className="flex justify-end pt-4">
-                    <div className="flex gap-2">
-                        <Button onClick={onClose} variant="secondary" type="button">Cancel</Button>
-                        <Button type="submit">Save Shift</Button>
-                    </div>
-                </div>
-            </form>
-        </Modal>
-    );
+    const [endH, endM] = endTime.split(':').map(Number);
+    const end = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate(), endH, endM);
+
+    if (end <= start) {
+      end.setDate(end.getDate() + 1); // Handle overnight shifts
+    }
+
+    const shiftData = { employeeId, start, end };
+    if (shift) {
+      onSubmit({ ...shiftData, id: shift.id });
+    } else {
+      onSubmit(shiftData);
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title={shift ? 'Edit Shift' : 'Add Shift'}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-300">Employee</label>
+          <select
+            value={employeeId}
+            onChange={(d) => setEmployeeId(d.target.value)}
+            className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white"
+          >
+            {employees.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300">Date</label>
+          <input
+            type="date"
+            value={shiftDate}
+            onChange={(e) => setShiftDate(e.target.value)}
+            className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300">Start Time</label>
+            <input
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300">End Time</label>
+            <input
+              type="time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+              className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white"
+            />
+          </div>
+        </div>
+        <div className="flex justify-end pt-4">
+          <div className="flex gap-2">
+            <Button onClick={onClose} variant="secondary" type="button">
+              Cancel
+            </Button>
+            <Button type="submit">Save Shift</Button>
+          </div>
+        </div>
+      </form>
+    </Modal>
+  );
 };
 
 // --- EMPLOYEES ---
