@@ -36,8 +36,7 @@ const generateInitialSchedule = (employees: Employee[], startDate: Date, numDays
             start.setHours(shiftTime.start, 0, 0, 0);
             const end = new Date(currentDay);
             end.setHours(shiftTime.end, 0, 0, 0);
-            // normalized id format (s_1, s_2, ...)
-            shifts.push({ id: `s_${shiftIdCounter++}`, employeeId, start, end });
+            shifts.push({ id: `s${shiftIdCounter++}`, employeeId, start, end });
         });
         
         // Assign night staff to their 8-hour shift
@@ -47,7 +46,7 @@ const generateInitialSchedule = (employees: Employee[], startDate: Date, numDays
             const end = new Date(currentDay);
             end.setDate(currentDay.getDate() + 1);
             end.setHours(7, 0, 0, 0);
-            shifts.push({ id: `s_${shiftIdCounter++}`, employeeId, start, end });
+            shifts.push({ id: `s${shiftIdCounter++}`, employeeId, start, end });
         });
     }
     return shifts;
@@ -57,7 +56,7 @@ const fourteenDaysAgo = new Date(new Date().setDate(new Date().getDate() - 14));
 const initialShifts: Shift[] = generateInitialSchedule(initialEmployees, fourteenDaysAgo, 28);
 
 const initialExpenseCategories: string[] = [
-    'Depreciation', 'Interest Expense', 'Principal', 'Owner Down capital only', 'Owner down interest only', 'Property taxes', 'Salaries Management', 'Salary Investor (Landscaping, paperwork)', 'Gr[...]
+    'Depreciation', 'Interest Expense', 'Principal', 'Owner Down capital only', 'Owner down interest only', 'Property taxes', 'Salaries Management', 'Salary Investor (Landscaping, paperwork)', 'Groceries', 'Maintenance', 'Electricity and cable', 'Travel', 'Insurance', 'Water and Sewer', 'Activities / Programing', 'Equipment location', 'Home Vehicule', 'Furniture', 'Training', 'Bureau', 'Bank Fees', 'Professional services', 'Permits'
 ].sort();
 
 const initialExpenses: Expense[] = [
@@ -86,8 +85,8 @@ const initialForecasts: ExpenseForecast[] = [
 ];
 
 const initialTimeOffRequests: TimeOffRequest[] = [
-    { id: 'tor1', employeeId: '2', startDate: new Date(new Date().setDate(new Date().getDate() + 5)), endDate: new Date(new Date().setDate(new Date().getDate() + 7)), reason: 'Family matter', stat[...]
-    { id: 'tor2', employeeId: '5', startDate: new Date(new Date().setDate(new Date().getDate() - 10)), endDate: new Date(new Date().setDate(new Date().getDate() - 8)), reason: 'Vacation', status: [...]
+    { id: 'tor1', employeeId: '2', startDate: new Date(new Date().setDate(new Date().getDate() + 5)), endDate: new Date(new Date().setDate(new Date().getDate() + 7)), reason: 'Family matter', status: 'Pending' },
+    { id: 'tor2', employeeId: '5', startDate: new Date(new Date().setDate(new Date().getDate() - 10)), endDate: new Date(new Date().setDate(new Date().getDate() - 8)), reason: 'Vacation', status: 'Approved' },
 ];
 
 const coreCompetencies: Omit<PerformanceItem, 'supervisorComments' | 'employeeComments' | 'rating'>[] = [
@@ -117,7 +116,7 @@ const initialPerformanceReviews: PerformanceReview[] = [
         reviewDate: new Date(new Date().setMonth(new Date().getMonth() - 6)),
         competencies: coreCompetencies.map(c => ({...c, supervisorComments: 'Bob meets expectations in this area.', employeeComments: 'I agree.', rating: 'Meets Expectations'})),
         objectives: [
-            { id: 'obj1', title: 'Complete dementia care training', description: 'Enroll in and complete the advanced dementia care certification.', supervisorComments: 'Completed ahead of schedu[...]
+            { id: 'obj1', title: 'Complete dementia care training', description: 'Enroll in and complete the advanced dementia care certification.', supervisorComments: 'Completed ahead of schedule.', employeeComments: 'Enjoyed the course.', rating: 'Exceeds Expectations' },
         ],
         overallSupervisorComments: 'Bob had a solid performance period, consistently meeting all expectations.',
         overallEmployeeComments: 'I feel good about my performance and look forward to the next period.',
@@ -143,7 +142,7 @@ const initialPerformanceReviews: PerformanceReview[] = [
 ];
 
 
-const LOGO_BASE64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABWSURBVHhe7c4xEQAgDMCwwv+P4fgyI5Ek720s[...]
+const LOGO_BASE64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABWSURBVHhe7c4xEQAgDMCwwv+P4fgyI5Ek720sAECgYgAIFQNAqBgAgokDIAaAEDCAGgAg0AEAFAyAEQDAIA8AEAwAMjEDwBAAwgEAIKQaAEAwAASAQBQAAgAAAABJRU5ErkJggg==';
 
 // --- HELPER FUNCTIONS ---
 const formatDate = (date: Date) => {
@@ -168,8 +167,8 @@ const exportToExcel = (data: { [sheetName: string]: object[] }, employees: Emplo
                     newRecord.supervisorSignatureDate = newRecord.supervisorSignatureDate ? formatDate(newRecord.supervisorSignatureDate) : '';
                     newRecord.employeeSignatureDate = newRecord.employeeSignatureDate ? formatDate(newRecord.employeeSignatureDate) : '';
                     // Flatten competencies and objectives for easier export
-                    newRecord.competencies = JSON.stringify(newRecord.competencies.map((c: PerformanceItem) => ({ title: c.title, rating: c.rating, supervisorComments: c.supervisorComments, emplo[...]
-                    newRecord.objectives = JSON.stringify(newRecord.objectives.map((o: PerformanceItem) => ({ title: o.title, rating: o.rating, supervisorComments: o.supervisorComments, employeeC[...]
+                    newRecord.competencies = JSON.stringify(newRecord.competencies.map((c: PerformanceItem) => ({ title: c.title, rating: c.rating, supervisorComments: c.supervisorComments, employeeComments: c.employeeComments })));
+                    newRecord.objectives = JSON.stringify(newRecord.objectives.map((o: PerformanceItem) => ({ title: o.title, rating: o.rating, supervisorComments: o.supervisorComments, employeeComments: o.employeeComments })));
                 }
                 return newRecord;
             });
@@ -194,8 +193,8 @@ const Card: FC<{ children: React.ReactNode, className?: string }> = ({ children,
     </div>
 );
 
-const Button: FC<{ onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void, children: React.ReactNode, variant?: 'primary' | 'secondary' | 'danger', className?: string, type?: 'button' | 'subm[...]
-    const baseClasses = 'px-4 py-2 rounded-md font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-no[...]
+const Button: FC<{ onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void, children: React.ReactNode, variant?: 'primary' | 'secondary' | 'danger', className?: string, type?: 'button' | 'submit' | 'reset', disabled?: boolean }> = ({ onClick, children, variant = 'primary', className = '', type = 'button', disabled = false }) => {
+    const baseClasses = 'px-4 py-2 rounded-md font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed';
     const variantClasses = {
         primary: 'bg-indigo-600 hover:bg-indigo-700 text-white focus:ring-indigo-500',
         secondary: 'bg-gray-600 hover:bg-gray-700 text-gray-200 focus:ring-gray-500',
@@ -204,7 +203,7 @@ const Button: FC<{ onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void, c
     return <button type={type} onClick={onClick} className={`${baseClasses} ${variantClasses[variant]} ${className}`} disabled={disabled}>{children}</button>;
 };
 
-const Modal: FC<{ isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode, size?: 'md' | 'lg' | 'xl' | '3xl' | '5xl' }> = ({ isOpen, onClose, title, children, size = 'md' }[...]
+const Modal: FC<{ isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode, size?: 'md' | 'lg' | 'xl' | '3xl' | '5xl' }> = ({ isOpen, onClose, title, children, size = 'md' }) => {
     if (!isOpen) return null;
     const sizeClasses = {
         md: 'max-w-md',
@@ -287,7 +286,7 @@ const LoginScreen: FC<{ onLogin: (email: string) => void, employees: Employee[] 
 };
 
 // --- DASHBOARD ---
-const FinancialDashboard: FC<{ tenancies: Tenancy[], shifts: Shift[], expenses: Expense[], employees: Employee[], allowances: Allowance[], timeOffRequests: TimeOffRequest[], onUpdateTimeOffReques[...]
+const FinancialDashboard: FC<{ tenancies: Tenancy[], shifts: Shift[], expenses: Expense[], employees: Employee[], allowances: Allowance[], timeOffRequests: TimeOffRequest[], onUpdateTimeOffRequest: (id: string, status: 'Approved' | 'Denied') => void }> = ({ tenancies, shifts, expenses, employees, allowances, timeOffRequests, onUpdateTimeOffRequest }) => {
     const [filter, setFilter] = useState('This Month');
     const dateRanges = useMemo(() => {
         const now = new Date();
@@ -396,7 +395,7 @@ const FinancialDashboard: FC<{ tenancies: Tenancy[], shifts: Shift[], expenses: 
                  <h2 className="text-3xl font-bold text-white">Dashboard</h2>
                  <div className="flex gap-2 bg-gray-700 p-1 rounded-lg">
                     {['Today', 'This Week', 'This Month', 'This Year', 'All Time'].map(f => (
-                        <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1 text-sm font-semibold rounded-md transition ${filter === f ? 'bg-indigo-600 text-white' : 'text-gray-300[...]
+                        <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1 text-sm font-semibold rounded-md transition ${filter === f ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-600'}`}>
                             {f}
                         </button>
                     ))}
@@ -461,7 +460,7 @@ const FinancialDashboard: FC<{ tenancies: Tenancy[], shifts: Shift[], expenses: 
 };
 
 // --- SCHEDULER ---
-const Scheduler: FC<{ employees: Employee[], shifts: Shift[], timeOffRequests: TimeOffRequest[], onShiftsAdd: (shifts: Omit<Shift, 'id'>[]) => void, onShiftUpdate: (shift: Shift) => void, onShift[...]
+const Scheduler: FC<{ employees: Employee[], shifts: Shift[], timeOffRequests: TimeOffRequest[], onShiftsAdd: (shifts: Omit<Shift, 'id'>[]) => void, onShiftUpdate: (shift: Shift) => void, onShiftAdd: (shift: Omit<Shift, 'id'>) => void, onShiftDelete: (shiftId: string) => void }> = ({ employees, shifts, timeOffRequests, onShiftsAdd, onShiftUpdate, onShiftAdd, onShiftDelete }) => {
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
@@ -530,14 +529,14 @@ const Scheduler: FC<{ employees: Employee[], shifts: Shift[], timeOffRequests: T
                         <Button onClick={() => changeDate(1)} variant="secondary">Next &gt;</Button>
                     </div>
                      <div className="flex gap-2 bg-gray-700 p-1 rounded-lg self-start">
-                        <button onClick={() => setView('day')} className={`px-3 py-1 text-sm font-semibold rounded-md transition ${view === 'day' ? 'bg-indigo-600 text-white' : 'text-gray-300 hov[...]
-                        <button onClick={() => setView('week')} className={`px-3 py-1 text-sm font-semibold rounded-md transition ${view === 'week' ? 'bg-indigo-600 text-white' : 'text-gray-300 h[...]
+                        <button onClick={() => setView('day')} className={`px-3 py-1 text-sm font-semibold rounded-md transition ${view === 'day' ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-600'}`}>Daily View</button>
+                        <button onClick={() => setView('week')} className={`px-3 py-1 text-sm font-semibold rounded-md transition ${view === 'week' ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-600'}`}>Weekly View</button>
                     </div>
                 </div>
             </Card>
 
-            {view === 'day' && <DailySchedulerView employees={employees} shifts={shifts} selectedDate={selectedDate} timeOffRequests={timeOffRequests} onEditShift={handleEditClick} onDeleteShift=[...]
-            {view === 'week' && <WeeklySchedulerView employees={employees} shifts={shifts} weekDays={weekDays} timeOffRequests={timeOffRequests} onEditShift={handleEditClick} onAddShift={(date, e[...]
+            {view === 'day' && <DailySchedulerView employees={employees} shifts={shifts} selectedDate={selectedDate} timeOffRequests={timeOffRequests} onEditShift={handleEditClick} onDeleteShift={onShiftDelete} />}
+            {view === 'week' && <WeeklySchedulerView employees={employees} shifts={shifts} weekDays={weekDays} timeOffRequests={timeOffRequests} onEditShift={handleEditClick} onAddShift={(date, empId) => handleAddClick(date, empId)} onDeleteShift={onShiftDelete} />}
            
             <ShiftFormModal 
                 isOpen={isAddModalOpen}
@@ -578,7 +577,7 @@ const isEmployeeOnLeave = (employeeId: string, date: Date, timeOffRequests: Time
     );
 };
 
-const DailySchedulerView: FC<{employees: Employee[], shifts: Shift[], selectedDate: Date, timeOffRequests: TimeOffRequest[], onEditShift: (shift: Shift) => void, onDeleteShift: (shiftId: string) [...]}>
+const DailySchedulerView: FC<{employees: Employee[], shifts: Shift[], selectedDate: Date, timeOffRequests: TimeOffRequest[], onEditShift: (shift: Shift) => void, onDeleteShift: (shiftId: string) => void}> = ({employees, shifts, selectedDate, timeOffRequests, onEditShift, onDeleteShift}) => {
      const shiftsForDay = useMemo(() => {
         const startOfDay = new Date(selectedDate);
         startOfDay.setHours(0, 0, 0, 0);
@@ -649,7 +648,7 @@ const DailySchedulerView: FC<{employees: Employee[], shifts: Shift[], selectedDa
     );
 };
 
-const WeeklySchedulerView: FC<{employees: Employee[], shifts: Shift[], weekDays: Date[], timeOffRequests: TimeOffRequest[], onEditShift: (shift: Shift) => void, onAddShift: (date: Date, employeeI[...]
+const WeeklySchedulerView: FC<{employees: Employee[], shifts: Shift[], weekDays: Date[], timeOffRequests: TimeOffRequest[], onEditShift: (shift: Shift) => void, onAddShift: (date: Date, employeeId: string) => void, onDeleteShift: (shiftId: string) => void}> = ({employees, shifts, weekDays, timeOffRequests, onEditShift, onAddShift, onDeleteShift}) => {
     return (
         <Card>
             <div className="grid grid-cols-8">
@@ -673,16 +672,16 @@ const WeeklySchedulerView: FC<{employees: Employee[], shifts: Shift[], weekDays:
                              const onLeave = isEmployeeOnLeave(emp.id, day, timeOffRequests);
                              
                              return (
-                                <div key={day.toISOString()} onClick={() => !onLeave && onAddShift(day, emp.id)} className={`p-2 border-b border-r border-gray-700 last:border-r-0 min-h-[6rem] spa[...]
+                                <div key={day.toISOString()} onClick={() => !onLeave && onAddShift(day, emp.id)} className={`p-2 border-b border-r border-gray-700 last:border-r-0 min-h-[6rem] space-y-1 transition-colors ${onLeave ? 'bg-gray-600/50' : 'cursor-pointer hover:bg-gray-700/50'}`}>
                                     {onLeave && <div className="text-center text-xs text-gray-300 font-semibold">ON LEAVE</div>}
                                     {dayShifts.map(shift => (
-                                        <div key={shift.id} onClick={(e) => { e.stopPropagation(); onEditShift(shift); }} className="bg-indigo-600 text-white text-xs p-1 rounded flex items-center[...]
+                                        <div key={shift.id} onClick={(e) => { e.stopPropagation(); onEditShift(shift); }} className="bg-indigo-600 text-white text-xs p-1 rounded flex items-center justify-between group cursor-pointer hover:bg-indigo-500">
                                             <span>
                                                 {formatTime(shift.start)} - {formatTime(shift.end)}
                                             </span>
                                             <button 
                                                 onClick={(e) => { e.stopPropagation(); if(window.confirm('Are you sure you want to delete this shift?')) onDeleteShift(shift.id); }}
-                                                className="ml-1 w-4 h-4 flex-shrink-0 flex items-center justify-center rounded-full text-indigo-200 hover:bg-red-500 hover:text-white transition-co[...]
+                                                className="ml-1 w-4 h-4 flex-shrink-0 flex items-center justify-center rounded-full text-indigo-200 hover:bg-red-500 hover:text-white transition-colors"
                                                 aria-label="Delete shift"
                                             >
                                                 &times;
@@ -702,19 +701,9 @@ const WeeklySchedulerView: FC<{employees: Employee[], shifts: Shift[], weekDays:
 const CopyScheduleModal: FC<{isOpen: boolean, onClose: () => void, shifts: Shift[], onShiftsAdd: (newShifts: Omit<Shift, 'id'>[]) => void, currentDate: Date }> = 
     ({isOpen, onClose, shifts, onShiftsAdd, currentDate}) => {
     
-    // Compute example dates using copies so we do NOT mutate the parent-supplied currentDate
-    const exampleCurrent = new Date(currentDate);
-    const exampleWeekStart = new Date(exampleCurrent);
-    exampleWeekStart.setDate(exampleCurrent.getDate() - exampleCurrent.getDay()); // Sunday of current week
-    exampleWeekStart.setHours(0,0,0,0);
-    const examplePrevMonth = new Date(exampleCurrent);
-    examplePrevMonth.setMonth(exampleCurrent.getMonth() - 1);
-    examplePrevMonth.setHours(0,0,0,0);
-
     const handleCopy = () => {
-        // Operate on copies so we don't mutate currentDate
         const sourceDate = new Date(currentDate);
-        sourceDate.setMonth(sourceDate.getMonth() - 1);
+        sourceDate.setMonth(currentDate.getMonth() - 1);
 
         const sourceWeekStart = new Date(sourceDate);
         sourceWeekStart.setDate(sourceDate.getDate() - sourceDate.getDay());
@@ -724,7 +713,7 @@ const CopyScheduleModal: FC<{isOpen: boolean, onClose: () => void, shifts: Shift
         sourceWeekEnd.setDate(sourceWeekStart.getDate() + 7);
 
         const targetWeekStart = new Date(currentDate);
-        targetWeekStart.setDate(targetWeekStart.getDate() - targetWeekStart.getDay());
+        targetWeekStart.setDate(currentDate.getDate() - currentDate.getDay());
         targetWeekStart.setHours(0,0,0,0);
 
         const timeDiff = targetWeekStart.getTime() - sourceWeekStart.getTime();
@@ -747,10 +736,7 @@ const CopyScheduleModal: FC<{isOpen: boolean, onClose: () => void, shifts: Shift
         <Modal isOpen={isOpen} onClose={onClose} title="Copy Schedule">
             <div className="space-y-4">
                 <p>This action will copy the schedule from the corresponding week of the previous month to the currently selected week.</p>
-                <p className="text-sm text-gray-400">
-                  For example, it will replace the schedule for the week of <span className="font-semibold text-indigo-400">{formatDate(exampleWeekStart)}</span>
-                  with the schedule from the week of <span className="font-semibold text-indigo-400">{formatDate(examplePrevMonth)}</span>.
-                </p>
+                <p className="text-sm text-gray-400">For example, it will replace the schedule for the week of <span className="font-semibold text-indigo-400">{formatDate(new Date(currentDate.setDate(currentDate.getDate() - currentDate.getDay())))}</span> with the schedule from the week of <span className="font-semibold text-indigo-400">{formatDate(new Date(new Date(currentDate).setMonth(currentDate.getMonth()-1)))}</span>.</p>
                 <div className="flex justify-end gap-2 pt-4">
                     <Button onClick={onClose} variant="secondary">Cancel</Button>
                     <Button onClick={handleCopy}>Copy From Previous Month</Button>
@@ -831,7 +817,7 @@ const ShiftFormModal: FC<{
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-300">Start Time</label>
-                        <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-wh[...]
+                        <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-300">End Time</label>
@@ -850,7 +836,7 @@ const ShiftFormModal: FC<{
 };
 
 // --- EMPLOYEES ---
-const EmployeeManager: FC<{ employees: Employee[], onEmployeeAdd: (emp: Omit<Employee, 'id'>) => void, onEmployeeUpdate: (emp: Employee) => void, onEmployeeDelete: (id: string) => void }> = ({ em[...]
+const EmployeeManager: FC<{ employees: Employee[], onEmployeeAdd: (emp: Omit<Employee, 'id'>) => void, onEmployeeUpdate: (emp: Employee) => void, onEmployeeDelete: (id: string) => void }> = ({ employees, onEmployeeAdd, onEmployeeUpdate, onEmployeeDelete }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
 
@@ -955,24 +941,24 @@ const EmployeeFormModal: FC<{isOpen: boolean, onClose: () => void, employee: Emp
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-300">Full Name</label>
-                    <input type="text" value={name} onChange={e => setName(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" [...]
+                    <input type="text" value={name} onChange={e => setName(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
                 </div>
                  <div>
                     <label className="block text-sm font-medium text-gray-300">Email Address</label>
-                    <input type="email" value={email} onChange={e => setEmail(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-whit[...]
+                    <input type="email" value={email} onChange={e => setEmail(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
                 </div>
                  <div>
                     <label className="block text-sm font-medium text-gray-300">Position</label>
-                    <input type="text" value={position} onChange={e => setPosition(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text[...]
+                    <input type="text" value={position} onChange={e => setPosition(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
                 </div>
                  <div className="grid grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-300">Pay Rate (per hour)</label>
-                        <input type="number" step="0.01" value={payRate} onChange={e => setPayRate(parseFloat(e.target.value))} required className="mt-1 block w-full bg-gray-700 border-gray-600 r[...]
+                        <input type="number" step="0.01" value={payRate} onChange={e => setPayRate(parseFloat(e.target.value))} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-300">Hire Date</label>
-                        <input type="date" value={hireDate} onChange={e => setHireDate(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 [...]
+                        <input type="date" value={hireDate} onChange={e => setHireDate(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
                     </div>
                 </div>
                 <div className="flex justify-end gap-2 pt-4">
@@ -985,7 +971,7 @@ const EmployeeFormModal: FC<{isOpen: boolean, onClose: () => void, employee: Emp
 };
 
 // --- CAPITAL EXPENSES ---
-const ExpenseManager: FC<{ expenses: Expense[], forecasts: ExpenseForecast[], expenseCategories: string[], onExpenseAdd: (exp: Omit<Expense, 'id'>) => void, onExpenseUpdate: (exp: Expense) => voi[...]
+const ExpenseManager: FC<{ expenses: Expense[], forecasts: ExpenseForecast[], expenseCategories: string[], onExpenseAdd: (exp: Omit<Expense, 'id'>) => void, onExpenseUpdate: (exp: Expense) => void, onExpenseDelete: (id: string) => void, onForecastUpdate: (forecast: ExpenseForecast) => void, onCategoryAdd: (name: string) => void, onCategoryDelete: (name: string) => void }> = 
     ({ expenses, forecasts, expenseCategories, onExpenseAdd, onExpenseUpdate, onExpenseDelete, onForecastUpdate, onCategoryAdd, onCategoryDelete }) => {
     
     const [view, setView] = useState<'log' | 'forecast'>('log');
@@ -1058,8 +1044,8 @@ const ExpenseManager: FC<{ expenses: Expense[], forecasts: ExpenseForecast[], ex
             </div>
             
             <div className="flex gap-2 bg-gray-700 p-1 rounded-lg self-start w-min">
-                <button onClick={() => setView('log')} className={`px-3 py-1 text-sm font-semibold rounded-md transition ${view === 'log' ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-g[...]
-                <button onClick={() => setView('forecast')} className={`px-3 py-1 text-sm font-semibold rounded-md transition ${view === 'forecast' ? 'bg-indigo-600 text-white' : 'text-gray-300 [...]
+                <button onClick={() => setView('log')} className={`px-3 py-1 text-sm font-semibold rounded-md transition ${view === 'log' ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-600'}`}>Expense Log</button>
+                <button onClick={() => setView('forecast')} className={`px-3 py-1 text-sm font-semibold rounded-md transition ${view === 'forecast' ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-600'}`}>Forecast vs. Actuals</button>
             </div>
 
             {view === 'log' && (
@@ -1204,7 +1190,7 @@ const CategoryManagerModal: FC<{isOpen: boolean, onClose: () => void, categories
                 <div>
                     <h4 className="font-semibold mb-2">Add New Category</h4>
                     <div className="flex gap-2">
-                        <input type="text" value={newCategory} onChange={e => setNewCategory(e.target.value)} className="flex-grow bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white[...]
+                        <input type="text" value={newCategory} onChange={e => setNewCategory(e.target.value)} className="flex-grow bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" placeholder="Category Name"/>
                         <Button onClick={handleAdd}>Add</Button>
                     </div>
                 </div>
@@ -1268,7 +1254,7 @@ const ExpenseFormModal: FC<{isOpen: boolean, onClose: () => void, expense: Expen
             <form onSubmit={handleSubmit} className="space-y-4">
                  <div>
                     <label className="block text-sm font-medium text-gray-300">Date</label>
-                    <input type="date" value={date} onChange={e => setDate(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white"[...]
+                    <input type="date" value={date} onChange={e => setDate(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
                 </div>
                  <div>
                     <label className="block text-sm font-medium text-gray-300">Category</label>
@@ -1278,11 +1264,11 @@ const ExpenseFormModal: FC<{isOpen: boolean, onClose: () => void, expense: Expen
                 </div>
                  <div>
                     <label className="block text-sm font-medium text-gray-300">Description</label>
-                    <input type="text" value={description} onChange={e => setDescription(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p[...]
+                    <input type="text" value={description} onChange={e => setDescription(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-300">Amount</label>
-                    <input type="number" step="0.01" value={amount} onChange={e => setAmount(parseFloat(e.target.value))} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounde[...]
+                    <input type="number" step="0.01" value={amount} onChange={e => setAmount(parseFloat(e.target.value))} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
                 </div>
                  <div className="flex justify-end gap-2 pt-4">
                     <Button onClick={onClose} variant="secondary" type="button">Cancel</Button>
@@ -1293,7 +1279,7 @@ const ExpenseFormModal: FC<{isOpen: boolean, onClose: () => void, expense: Expen
     );
  };
 
-// --- SALARY EXPENSES ---
+ // --- SALARY EXPENSES ---
 const SalaryExpenses: FC<{ shifts: Shift[], employees: Employee[] }> = ({ shifts, employees }) => {
     const [period, setPeriod] = useState<'Day' | 'Week' | 'Month' | 'Year'>('Month');
     const [selectedDate, setSelectedDate] = useState(new Date());
@@ -1400,7 +1386,7 @@ const SalaryExpenses: FC<{ shifts: Shift[], employees: Employee[] }> = ({ shifts
                 <h2 className="text-3xl font-bold text-white">Salary Expenses</h2>
                  <div className="flex gap-2 bg-gray-700 p-1 rounded-lg">
                     {(['Day', 'Week', 'Month', 'Year'] as const).map(p => (
-                        <button key={p} onClick={() => setPeriod(p)} className={`px-3 py-1 text-sm font-semibold rounded-md transition ${period === p ? 'bg-indigo-600 text-white' : 'text-gray-30[...]
+                        <button key={p} onClick={() => setPeriod(p)} className={`px-3 py-1 text-sm font-semibold rounded-md transition ${period === p ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-600'}`}>
                             {p}
                         </button>
                     ))}
@@ -1618,23 +1604,23 @@ const TenancyFormModal: FC<{
                  <div>
                     <label className="block text-sm font-medium text-gray-300">Room</label>
                     <select value={roomId} onChange={e => setRoomId(e.target.value)} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white">
-                        {tenancy && !availableRooms.find(r => r.id === tenancy.roomId) && <option key={tenancy.roomId} value={tenancy.roomId}>Room {rooms.find(r => r.id === tenancy.roomId)?.room[...]
+                        {tenancy && !availableRooms.find(r => r.id === tenancy.roomId) && <option key={tenancy.roomId} value={tenancy.roomId}>Room {rooms.find(r => r.id === tenancy.roomId)?.roomNumber} (Current)</option>}
                         {availableRooms.map(r => <option key={r.id} value={r.id}>Room {r.roomNumber}</option>)}
                     </select>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                      <div>
                         <label className="block text-sm font-medium text-gray-300">Start Date</label>
-                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p[...]
+                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
                     </div>
                      <div>
                         <label className="block text-sm font-medium text-gray-300">End Date (optional)</label>
-                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white[...]
+                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
                     </div>
                 </div>
                  <div>
                     <label className="block text-sm font-medium text-gray-300">Monthly Rate</label>
-                    <input type="number" step="0.01" value={monthlyRate} onChange={e => setMonthlyRate(parseFloat(e.target.value))} required className="mt-1 block w-full bg-gray-700 border-gray-[...]
+                    <input type="number" step="0.01" value={monthlyRate} onChange={e => setMonthlyRate(parseFloat(e.target.value))} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
                 </div>
                 <div className="flex justify-end gap-2 pt-4">
                     <Button onClick={onClose} variant="secondary" type="button">Cancel</Button>
@@ -1739,11 +1725,11 @@ const TimeOffRequestForm: FC<{employeeId: string, onSubmit: (req: Omit<TimeOffRe
             <div className="grid grid-cols-2 gap-4">
                  <div>
                     <label className="block text-sm font-medium text-gray-300">Start Date</label>
-                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 t[...]
+                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
                 </div>
                  <div>
                     <label className="block text-sm font-medium text-gray-300">End Date</label>
-                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-[...]
+                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
                 </div>
             </div>
             <div>
@@ -1793,14 +1779,14 @@ const CreateReviewModal: FC<{
             <div className="space-y-4">
                  <div>
                     <label className="block text-sm font-medium text-gray-300">Employee</label>
-                    <select value={selectedEmployeeId} onChange={e => setSelectedEmployeeId(e.target.value)} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 tex[...]
+                    <select value={selectedEmployeeId} onChange={e => setSelectedEmployeeId(e.target.value)} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white">
                         {employeesToReview.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                     </select>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-300">Review Period</label>
-                         <select value={period} onChange={e => setPeriod(e.target.value as 'Mid-Year' | 'End-of-Year')} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow[...]
+                         <select value={period} onChange={e => setPeriod(e.target.value as 'Mid-Year' | 'End-of-Year')} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white">
                             <option value="Mid-Year">Mid-Year</option>
                             <option value="End-of-Year">End-of-Year</option>
                         </select>
@@ -1963,7 +1949,7 @@ const PerformanceReviewModal: FC<{
     
     const canSupervisorEdit = isSupervisor && review.status === 'Draft';
     const canEmployeeComment = isEmployee && review.status === 'Pending Employee Acknowledgment';
-    
+
     const handleItemChange = (section: 'competencies' | 'objectives', id: string, field: 'supervisorComments' | 'employeeComments' | 'rating', value: string) => {
         setEditableReview(prev => {
             const newReview = { ...prev };
@@ -2021,14 +2007,14 @@ const PerformanceReviewModal: FC<{
                                         <label className="text-sm font-semibold">Supervisor Rating & Comments</label>
                                         <div className="flex gap-2 my-2">
                                             {ratingOptions.map(r => (
-                                                <button key={r} disabled={!canSupervisorEdit} onClick={() => handleItemChange('competencies', item.id, 'rating', r)} className={`px-2 py-1 text-xs[...]
+                                                <button key={r} disabled={!canSupervisorEdit} onClick={() => handleItemChange('competencies', item.id, 'rating', r)} className={`px-2 py-1 text-xs rounded ${item.rating === r ? ratingColors[r] : 'bg-gray-600'} ${canSupervisorEdit ? 'hover:opacity-80' : 'cursor-not-allowed'}`}>{r}</button>
                                             ))}
                                         </div>
-                                        <textarea value={item.supervisorComments} disabled={!canSupervisorEdit} onChange={(e) => handleItemChange('competencies', item.id, 'supervisorComments', e[...]
+                                        <textarea value={item.supervisorComments} disabled={!canSupervisorEdit} onChange={(e) => handleItemChange('competencies', item.id, 'supervisorComments', e.target.value)} rows={3} className="w-full bg-gray-900 rounded p-2 text-sm disabled:bg-gray-800"></textarea>
                                     </div>
                                     <div>
                                         <label className="text-sm font-semibold">Employee Comments</label>
-                                         <textarea value={item.employeeComments} disabled={!canEmployeeComment} onChange={(e) => handleItemChange('competencies', item.id, 'employeeComments', e.t[...]
+                                         <textarea value={item.employeeComments} disabled={!canEmployeeComment} onChange={(e) => handleItemChange('competencies', item.id, 'employeeComments', e.target.value)} rows={canEmployeeComment ? 4 : 3} className="w-full bg-gray-900 rounded p-2 text-sm mt-2 disabled:bg-gray-800"></textarea>
                                     </div>
                                 </div>
                             </div>
@@ -2041,11 +2027,11 @@ const PerformanceReviewModal: FC<{
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="text-sm font-semibold">Supervisor's Overall Comments</label>
-                            <textarea value={editableReview.overallSupervisorComments} disabled={!canSupervisorEdit} onChange={(e) => handleFieldChange('overallSupervisorComments', e.target.valu[...]
+                            <textarea value={editableReview.overallSupervisorComments} disabled={!canSupervisorEdit} onChange={(e) => handleFieldChange('overallSupervisorComments', e.target.value)} rows={4} className="w-full bg-gray-900 rounded p-2 text-sm mt-2 disabled:bg-gray-800"></textarea>
                         </div>
                         <div>
                             <label className="text-sm font-semibold">Employee's Overall Comments</label>
-                            <textarea value={editableReview.overallEmployeeComments} disabled={!canEmployeeComment} onChange={(e) => handleFieldChange('overallEmployeeComments', e.target.value)}[...]
+                            <textarea value={editableReview.overallEmployeeComments} disabled={!canEmployeeComment} onChange={(e) => handleFieldChange('overallEmployeeComments', e.target.value)} rows={4} className="w-full bg-gray-900 rounded p-2 text-sm mt-2 disabled:bg-gray-800"></textarea>
                         </div>
                     </div>
                 </Card>
@@ -2112,12 +2098,8 @@ const App: FC = () => {
     const handleUpdate = <T extends {id: string}>(setter: React.Dispatch<React.SetStateAction<T[]>>, updatedData: T) => {
         setter(prev => prev.map(item => item.id === updatedData.id ? updatedData : item));
     };
-    // --- robust handleDelete (coerce id types to string) ---
-    const handleDelete = <T extends { id: string | number }>(
-      setter: React.Dispatch<React.SetStateAction<T[]>>,
-      id: string | number
-    ) => {
-      setter(prev => prev.filter(item => String(item.id) !== String(id)));
+    const handleDelete = <T extends {id: string}>(setter: React.Dispatch<React.SetStateAction<T[]>>, id: string) => {
+        setter(prev => prev.filter(item => item.id !== id));
     };
     const handleUpdateTimeOffRequest = (id: string, status: 'Approved' | 'Denied') => {
         handleUpdate(setTimeOffRequests, { ...timeOffRequests.find(r => r.id === id)!, status });
@@ -2191,7 +2173,7 @@ const App: FC = () => {
             Employees: employees.map(e => ({...e, hireDate: formatDate(e.hireDate)})),
             Shifts: shifts.map(s => ({...s, employeeName: employees.find(e => e.id === s.employeeId)?.name || 'Unknown', start: s.start.toISOString(), end: s.end.toISOString()})),
             Expenses: expenses.map(e => ({...e, date: formatDate(e.date)})),
-            Tenancies: tenancies.map(t => ({...t, residentName: residents.find(r => r.id === t.residentId)?.name, roomNumber: rooms.find(r=>r.id===t.roomId)?.roomNumber, startDate: formatDate(t.[...]
+            Tenancies: tenancies.map(t => ({...t, residentName: residents.find(r => r.id === t.residentId)?.name, roomNumber: rooms.find(r=>r.id===t.roomId)?.roomNumber, startDate: formatDate(t.startDate), endDate: t.endDate ? formatDate(t.endDate) : ''})),
         };
         exportToExcel(dataToExport, employees, performanceReviews);
     };
@@ -2202,14 +2184,14 @@ const App: FC = () => {
     
     const CurrentView = () => {
         switch (view) {
-            case 'Dashboard': return <FinancialDashboard tenancies={tenancies} shifts={shifts} expenses={expenses} employees={employees} allowances={allowances} timeOffRequests={timeOffRequests}[...]
-            case 'Scheduler': return <Scheduler employees={employees} shifts={shifts} timeOffRequests={timeOffRequests} onShiftsAdd={handleAddShifts} onShiftUpdate={(s) => handleUpdate(setShifts[...]
-            case 'Employees': return <EmployeeManager employees={employees} onEmployeeAdd={(e) => handleAdd(setEmployees, e)} onEmployeeUpdate={(e) => handleUpdate(setEmployees, e)} onEmployeeDe[...]
-            case 'Capital Expenses': return <ExpenseManager expenses={expenses} forecasts={forecasts} expenseCategories={expenseCategories} onExpenseAdd={(e) => handleAdd(setExpenses, e)} onExpe[...]
+            case 'Dashboard': return <FinancialDashboard tenancies={tenancies} shifts={shifts} expenses={expenses} employees={employees} allowances={allowances} timeOffRequests={timeOffRequests} onUpdateTimeOffRequest={handleUpdateTimeOffRequest} />;
+            case 'Scheduler': return <Scheduler employees={employees} shifts={shifts} timeOffRequests={timeOffRequests} onShiftsAdd={handleAddShifts} onShiftUpdate={(s) => handleUpdate(setShifts, s)} onShiftAdd={(s) => handleAdd(setShifts, s)} onShiftDelete={(id) => handleDelete(setShifts, id)} />;
+            case 'Employees': return <EmployeeManager employees={employees} onEmployeeAdd={(e) => handleAdd(setEmployees, e)} onEmployeeUpdate={(e) => handleUpdate(setEmployees, e)} onEmployeeDelete={(id) => handleDelete(setEmployees, id)} />;
+            case 'Capital Expenses': return <ExpenseManager expenses={expenses} forecasts={forecasts} expenseCategories={expenseCategories} onExpenseAdd={(e) => handleAdd(setExpenses, e)} onExpenseUpdate={(e) => handleUpdate(setExpenses, e)} onExpenseDelete={(id) => handleDelete(setExpenses, id)} onForecastUpdate={(f) => handleUpdate(setForecasts, f)} onCategoryAdd={handleAddCategory} onCategoryDelete={handleDeleteCategory}/>;
             case 'Salary Expenses': return <SalaryExpenses shifts={shifts} employees={employees} />;
-            case 'Revenue': return <RevenueManager residents={residents} rooms={rooms} tenancies={tenancies} onTenancyUpdate={t => handleUpdate(setTenancies, t)} onTenancyAdd={t => handleAdd(set[...]
-            case 'My Portal': return <MyPortal loggedInEmployee={user.employee!} shifts={shifts} timeOffRequests={timeOffRequests} onTimeOffRequestAdd={(r) => handleAdd(setTimeOffRequests, {...r[...]
-            case 'Performance Reviews': return <PerformanceReviews loggedInUser={user} reviews={performanceReviews} employees={employees} onReviewCreate={handleCreateReview} onReviewUpdate={hand[...]
+            case 'Revenue': return <RevenueManager residents={residents} rooms={rooms} tenancies={tenancies} onTenancyUpdate={t => handleUpdate(setTenancies, t)} onTenancyAdd={t => handleAdd(setTenancies, t)} />;
+            case 'My Portal': return <MyPortal loggedInEmployee={user.employee!} shifts={shifts} timeOffRequests={timeOffRequests} onTimeOffRequestAdd={(r) => handleAdd(setTimeOffRequests, {...r, status: 'Pending'})} />;
+            case 'Performance Reviews': return <PerformanceReviews loggedInUser={user} reviews={performanceReviews} employees={employees} onReviewCreate={handleCreateReview} onReviewUpdate={handleUpdateReview} />;
             default: return <h1 className="text-white">Not Implemented</h1>;
         }
     };
