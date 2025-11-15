@@ -785,6 +785,16 @@ const CopyScheduleModal: FC<{
   );
 };
 
+const ShiftFormModal: FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    shift: Shift | null;
+    employees: Employee[];
+    onSubmit: (data: Omit<Shift, 'id'> | Shift) => void;
+    selectedDate: Date;
+    initialData: { date: Date, employeeId: string } | null;
+}> = ({ isOpen, onClose, shift, employees, onSubmit, selectedDate, initialData }) => {
+    
     useEffect(() => {
         if (shift) {
             setEmployeeId(shift.employeeId);
