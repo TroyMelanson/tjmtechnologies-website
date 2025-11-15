@@ -36,7 +36,7 @@ const generateInitialSchedule = (employees: Employee[], startDate: Date, numDays
             start.setHours(shiftTime.start, 0, 0, 0);
             const end = new Date(currentDay);
             end.setHours(shiftTime.end, 0, 0, 0);
-            shifts.push({ id: `s${shiftIdCounter++}`, employeeId, start, end });
+            shifts.push({ id: `s_${shiftIdCounter++}`, employeeId, start, end });
         });
         
         // Assign night staff to their 8-hour shift
@@ -46,7 +46,7 @@ const generateInitialSchedule = (employees: Employee[], startDate: Date, numDays
             const end = new Date(currentDay);
             end.setDate(currentDay.getDate() + 1);
             end.setHours(7, 0, 0, 0);
-            shifts.push({ id: `s${shiftIdCounter++}`, employeeId, start, end });
+            shifts.push({ id: `s_${shiftIdCounter++}`, employeeId, start, end });
         });
     }
     return shifts;
@@ -732,11 +732,25 @@ const CopyScheduleModal: FC<{isOpen: boolean, onClose: () => void, shifts: Shift
         }
     };
 
+    // Calculate example dates without mutating currentDate
+    const exampleTargetWeek = (() => {
+        const date = new Date(currentDate);
+        date.setDate(date.getDate() - date.getDay());
+        return formatDate(date);
+    })();
+    
+    const exampleSourceWeek = (() => {
+        const date = new Date(currentDate);
+        date.setMonth(date.getMonth() - 1);
+        date.setDate(date.getDate() - date.getDay());
+        return formatDate(date);
+    })();
+
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Copy Schedule">
             <div className="space-y-4">
                 <p>This action will copy the schedule from the corresponding week of the previous month to the currently selected week.</p>
-                <p className="text-sm text-gray-400">For example, it will replace the schedule for the week of <span className="font-semibold text-indigo-400">{formatDate(new Date(currentDate.setDate(currentDate.getDate() - currentDate.getDay())))}</span> with the schedule from the week of <span className="font-semibold text-indigo-400">{formatDate(new Date(new Date(currentDate).setMonth(currentDate.getMonth()-1)))}</span>.</p>
+                <p className="text-sm text-gray-400">For example, it will replace the schedule for the week of <span className="font-semibold text-indigo-400">{exampleTargetWeek}</span> with the schedule from the week of <span className="font-semibold text-indigo-400">{exampleSourceWeek}</span>.</p>
                 <div className="flex justify-end gap-2 pt-4">
                     <Button onClick={onClose} variant="secondary">Cancel</Button>
                     <Button onClick={handleCopy}>Copy From Previous Month</Button>
@@ -2098,8 +2112,8 @@ const App: FC = () => {
     const handleUpdate = <T extends {id: string}>(setter: React.Dispatch<React.SetStateAction<T[]>>, updatedData: T) => {
         setter(prev => prev.map(item => item.id === updatedData.id ? updatedData : item));
     };
-    const handleDelete = <T extends {id: string}>(setter: React.Dispatch<React.SetStateAction<T[]>>, id: string) => {
-        setter(prev => prev.filter(item => item.id !== id));
+    const handleDelete = <T extends {id: string | number}>(setter: React.Dispatch<React.SetStateAction<T[]>>, id: string | number) => {
+        setter(prev => prev.filter(item => String(item.id) !== String(id)));
     };
     const handleUpdateTimeOffRequest = (id: string, status: 'Approved' | 'Denied') => {
         handleUpdate(setTimeOffRequests, { ...timeOffRequests.find(r => r.id === id)!, status });
