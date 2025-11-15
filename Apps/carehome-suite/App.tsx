@@ -698,68 +698,92 @@ const WeeklySchedulerView: FC<{employees: Employee[], shifts: Shift[], weekDays:
     );
 };
 
-const CopyScheduleModal: FC<{isOpen: boolean, onClose: () => void, shifts: Shift[], onShiftsAdd: (newShifts: Omit<Shift, 'id'>[]) => void, currentDate: Date }> = 
-    ({isOpen, onClose, shifts, onShiftsAdd, currentDate}) => {
-    
-    const handleCopy = () => {
-        const sourceDate = new Date(currentDate);
-        sourceDate.setMonth(currentDate.getMonth() - 1);
+// CopyScheduleModal: do not mutate currentDate passed from parent
+const CopyScheduleModal: FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  shifts: Shift[];
+  onShiftsAdd: (newShifts: Omit<Shift, 'id'>[]) => void;
+  currentDate: Date;
+}> = ({ isOpen, onClose, shifts, onShiftsAdd, currentDate }) => {
+  // Compute example dates using copies so we do NOT mutate the parent-supplied currentDate
+  const exampleCurrent = new Date(currentDate);
+  const exampleWeekStart = new Date(exampleCurrent);
+  exampleWeekStart.setDate(exampleCurrent.getDate() - exampleCurrent.getDay()); // Sunday of current week
+  exampleWeekStart.setHours(0, 0, 0, 0);
 
-        const sourceWeekStart = new Date(sourceDate);
-        sourceWeekStart.setDate(sourceDate.getDate() - sourceDate.getDay());
-        sourceWeekStart.setHours(0,0,0,0);
+  const examplePrevMonth = new Date(exampleCurrent);
+  examplePrevMonth.setMonth(exampleCurrent.getMonth() - 1);
+  examplePrevMonth.setHours(0, 0, 0, 0);
 
-        const sourceWeekEnd = new Date(sourceWeekStart);
-        sourceWeekEnd.setDate(sourceWeekStart.getDate() + 7);
+  const handleCopy = () => {
+    // Operate on copies so we don't mutate currentDate
+    const sourceDate = new Date(currentDate);
+    sourceDate.setMonth(sourceDate.getMonth() - 1);
 
-        const targetWeekStart = new Date(currentDate);
-        targetWeekStart.setDate(currentDate.getDate() - currentDate.getDay());
-        targetWeekStart.setHours(0,0,0,0);
+    const sourceWeekStart = new Date(sourceDate);
+    sourceWeekStart.setDate(sourceDate.getDate() - sourceDate.getDay());
+    sourceWeekStart.setHours(0, 0, 0, 0);
 
-        const timeDiff = targetWeekStart.getTime() - sourceWeekStart.getTime();
-        
-        const shiftsToCopy = shifts.filter(s => s.start >= sourceWeekStart && s.start < sourceWeekEnd);
+    const sourceWeekEnd = new Date(sourceWeekStart);
+    sourceWeekEnd.setDate(sourceWeekStart.getDate() + 7);
 
-        const newShifts = shiftsToCopy.map(s => {
-            const newStart = new Date(s.start.getTime() + timeDiff);
-            const newEnd = new Date(s.end.getTime() + timeDiff);
-            return { employeeId: s.employeeId, start: newStart, end: newEnd };
-        });
+    const targetWeekStart = new Date(currentDate);
+    targetWeekStart.setDate(targetWeekStart.getDate() - targetWeekStart.getDay());
+    targetWeekStart.setHours(0, 0, 0, 0);
 
-        if (window.confirm(`This will copy ${newShifts.length} shifts from the week of ${formatDate(sourceWeekStart)} to the week of ${formatDate(targetWeekStart)}. Are you sure?`)) {
-            onShiftsAdd(newShifts);
-            onClose();
-        }
-    };
+    const timeDiff = targetWeekStart.getTime() - sourceWeekStart.getTime();
 
-    return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Copy Schedule">
-            <div className="space-y-4">
-                <p>This action will copy the schedule from the corresponding week of the previous month to the currently selected week.</p>
-                <p className="text-sm text-gray-400">For example, it will replace the schedule for the week of <span className="font-semibold text-indigo-400">{formatDate(new Date(currentDate.setDate(currentDate.getDate() - currentDate.getDay())))}</span> with the schedule from the week of <span className="font-semibold text-indigo-400">{formatDate(new Date(new Date(currentDate).setMonth(currentDate.getMonth()-1)))}</span>.</p>
-                <div className="flex justify-end gap-2 pt-4">
-                    <Button onClick={onClose} variant="secondary">Cancel</Button>
-                    <Button onClick={handleCopy}>Copy From Previous Month</Button>
-                </div>
-            </div>
-        </Modal>
+    const shiftsToCopy = shifts.filter(
+      (s) => s.start >= sourceWeekStart && s.start < sourceWeekEnd
     );
-};
 
-const ShiftFormModal: FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    shift: Shift | null;
-    employees: Employee[];
-    onSubmit: (data: Omit<Shift, 'id'> | Shift) => void;
-    selectedDate: Date;
-    initialData: { date: Date, employeeId: string } | null;
-}> = ({ isOpen, onClose, shift, employees, onSubmit, selectedDate, initialData }) => {
-    
-    const [employeeId, setEmployeeId] = useState('');
-    const [startTime, setStartTime] = useState('08:00');
-    const [endTime, setEndTime] = useState('16:00');
-    const [shiftDate, setShiftDate] = useState(formatDate(selectedDate));
+    const newShifts = shiftsToCopy.map((s) => {
+      const newStart = new Date(s.start.getTime() + timeDiff);
+      const newEnd = new Date(s.end.getTime() + timeDiff);
+      return { employeeId: s.employeeId, start: newStart, end: newEnd };
+    });
+
+    if (
+      window.confirm(
+        `This will copy ${newShifts.length} shifts from the week of ${formatDate(
+          sourceWeekStart
+        )} to the week of ${formatDate(targetWeekStart)}. Are you sure?`
+      )
+    ) {
+      onShiftsAdd(newShifts);
+      onClose();
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Copy Schedule">
+      <div className="space-y-4">
+        <p>
+          This action will copy the schedule from the corresponding week of the
+          previous month to the currently selected week.
+        </p>
+        <p className="text-sm text-gray-400">
+          For example, it will replace the schedule for the week of{' '}
+          <span className="font-semibold text-indigo-400">
+            {formatDate(exampleWeekStart)}
+          </span>{' '}
+          with the schedule from the week of{' '}
+          <span className="font-semibold text-indigo-400">
+            {formatDate(examplePrevMonth)}
+          </span>
+          .
+        </p>
+        <div className="flex justify-end gap-2 pt-4">
+          <Button onClick={onClose} variant="secondary">
+            Cancel
+          </Button>
+          <Button onClick={handleCopy}>Copy From Previous Month</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
 
     useEffect(() => {
         if (shift) {
