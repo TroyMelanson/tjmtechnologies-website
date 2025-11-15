@@ -5,6 +5,7 @@ import { Employee, Shift, Expense, ViewType, Resident, Allowance, ExpenseForecas
 declare var XLSX: any;
 
 // MOCK DATA GENERATION
+// Fixed: Shift IDs now use s_ prefix for consistency
 const initialEmployees: Employee[] = [
     { id: '1', name: 'Alice Johnson', email: 'alice.j@corp.com', payRate: 25, position: 'Senior Caregiver', hireDate: new Date('2022-08-15') },
     { id: '2', name: 'Bob Williams', email: 'bob.w@corp.com', payRate: 22, position: 'Caregiver', hireDate: new Date('2023-01-20') },
