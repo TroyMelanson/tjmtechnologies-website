@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 const services = [
@@ -8,7 +9,7 @@ const services = [
       </svg>
     ),
     title: 'AI Solutions',
-    description: 'Leverage the power of Artificial Intelligence to automate tasks, gain insights from data, and create intelligent applications.'
+    description: 'I build custom AI-powered tools, including chatbots, data analysis models, and intelligent agents, to unlock new efficiencies and provide a competitive edge for your business.'
   },
   {
     icon: (
@@ -16,8 +17,8 @@ const services = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
       </svg>
     ),
-    title: 'Process Automation (Flows)',
-    description: 'Streamline your business operations by automating repetitive workflows, saving time and reducing human error.'
+    title: 'Process Automation',
+    description: 'I identify and automate your manual, repetitive tasks using robust workflow solutions. Free up your team\'s valuable time to focus on strategic growth, not tedious processes.'
   },
   {
     icon: (
@@ -26,7 +27,7 @@ const services = [
       </svg>
     ),
     title: 'Custom App Development',
-    description: 'From mobile to desktop, we build tailored applications that meet your specific business needs and delight your users.'
+    description: 'From sleek mobile apps to powerful desktop software, I develop bespoke applications from the ground up, designed to perfectly match your workflow and deliver an exceptional user experience.'
   },
   {
     icon: (
@@ -35,7 +36,7 @@ const services = [
       </svg>
     ),
     title: 'Website Design & Development',
-    description: 'Creating stunning, responsive, and high-performing websites that serve as the digital face of your brand.'
+    description: 'I craft beautiful, modern, and high-performance websites that not only look great but are also built to convert visitors into customers. Your website will be your most powerful digital asset.'
   },
 ];
 

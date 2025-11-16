@@ -56,5 +56,14 @@ export interface Allowance {
   description: string;
 }
 
-export type ViewType = 'Dashboard' | 'Scheduler' | 'Employees' | 'Capital Expenses' | 'Salary Expenses' | 'Revenue';
-export type UserRole = 'Supervisor' | 'Owner';
+export interface TimeOffRequest {
+  id: string;
+  employeeId: string;
+  startDate: Date;
+  endDate: Date;
+  reason: string;
+  status: 'Pending' | 'Approved' | 'Denied';
+}
+
+export type ViewType = 'Dashboard' | 'Scheduler' | 'Employees' | 'Capital Expenses' | 'Salary Expenses' | 'Revenue' | 'My Portal';
+export type UserRole = 'Supervisor' | 'Owner' | 'Employee';

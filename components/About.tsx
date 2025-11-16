@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 const About: React.FC = () => {
@@ -11,10 +10,13 @@ const About: React.FC = () => {
               About TJM Technologies
             </h2>
             <p className="mt-4 text-lg text-gray-300">
-              With over 18 years of dedicated experience, we bring a wealth of knowledge from leading complex projects within government sectors and refining user interfaces for optimal performance.
+              TJM Technologies is a forward-thinking Canadian software company focused on building secure, modern, and intuitive digital solutions. With a strong background in complex system design, government-level project execution, and user-centric interface development, we aim to create technology that solves real problems with clarity and impact.
             </p>
             <p className="mt-4 text-lg text-gray-300">
-              Our mission is to empower businesses by integrating cutting-edge technology with practical, results-driven strategies. We believe in building strong partnerships to deliver solutions that not only meet but exceed expectations. Based in Bathurst, NB, we're proud to serve clients locally and beyond.
+              Our mission is to empower organizations by blending practical innovation with reliable engineering. We are committed to developing tools and platforms that streamline operations, support informed decision-making, and elevate the overall digital experience.
+            </p>
+            <p className="mt-4 text-lg text-gray-300">
+              Based in Bathurst, NB, TJM Technologies is actively growing its suite of products and partnerships as we work toward bringing powerful, accessible technology to businesses and institutions across Canada and beyond.
             </p>
           </div>
           <div className="mt-10 lg:mt-0">

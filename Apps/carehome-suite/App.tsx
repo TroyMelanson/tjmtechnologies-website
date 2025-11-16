@@ -1,19 +1,19 @@
 import React, { useState, useMemo, FC, useCallback, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Employee, Shift, Expense, ViewType, Resident, Allowance, ExpenseForecast, UserRole, Room, Tenancy } from './types';
+import { Employee, Shift, Expense, ViewType, Resident, Allowance, ExpenseForecast, UserRole, Room, Tenancy, TimeOffRequest, PerformanceReview, PerformanceItem, RatingScale } from './types';
 
 declare var XLSX: any;
 
 // MOCK DATA GENERATION
 const initialEmployees: Employee[] = [
-    { id: '1', name: 'Alice Johnson', payRate: 25, position: 'Senior Caregiver', hireDate: new Date('2022-08-15') },
-    { id: '2', name: 'Bob Williams', payRate: 22, position: 'Caregiver', hireDate: new Date('2023-01-20') },
-    { id: '3', name: 'Charlie Brown', payRate: 20, position: 'Night Shift Supervisor', hireDate: new Date('2021-11-01') },
-    { id: '4', name: 'Diana Prince', payRate: 28, position: 'Registered Nurse', hireDate: new Date('2023-05-10') },
-    { id: '5', name: 'Edward Hands', payRate: 21, position: 'Caregiver', hireDate: new Date('2023-03-12') },
-    { id: '6', name: 'Fiona Glenanne', payRate: 23, position: 'Activities Coordinator', hireDate: new Date('2022-09-01') },
-    { id: '7', name: 'George Costanza', payRate: 20, position: 'Night Shift Caregiver', hireDate: new Date('2023-07-01') },
-    { id: '8', name: 'Hannah Montana', payRate: 35, position: 'Director of Care', hireDate: new Date('2020-02-01') },
+    { id: '1', name: 'Alice Johnson', email: 'alice.j@corp.com', payRate: 25, position: 'Senior Caregiver', hireDate: new Date('2022-08-15') },
+    { id: '2', name: 'Bob Williams', email: 'bob.w@corp.com', payRate: 22, position: 'Caregiver', hireDate: new Date('2023-01-20') },
+    { id: '3', name: 'Charlie Brown', email: 'charlie.b@corp.com', payRate: 20, position: 'Night Shift Supervisor', hireDate: new Date('2021-11-01') },
+    { id: '4', name: 'Diana Prince', email: 'diana.p@corp.com', payRate: 28, position: 'Registered Nurse', hireDate: new Date('2023-05-10') },
+    { id: '5', name: 'Edward Hands', email: 'edward.h@corp.com', payRate: 21, position: 'Caregiver', hireDate: new Date('2023-03-12') },
+    { id: '6', name: 'Fiona Glenanne', email: 'fiona.g@corp.com', payRate: 23, position: 'Activities Coordinator', hireDate: new Date('2022-09-01') },
+    { id: '7', name: 'George Costanza', email: 'george.c@corp.com', payRate: 20, position: 'Night Shift Caregiver', hireDate: new Date('2023-07-01') },
+    { id: '8', name: 'Hannah Montana', email: 'hannah.m@corp.com', payRate: 35, position: 'Director of Care', hireDate: new Date('2020-02-01') },
 ];
 
 const generateInitialSchedule = (employees: Employee[], startDate: Date, numDays: number): Shift[] => {
@@ -84,27 +84,109 @@ const initialForecasts: ExpenseForecast[] = [
     { id: `${new Date().getFullYear()}-${new Date().getMonth() + 1}-Groceries`, year: new Date().getFullYear(), month: new Date().getMonth() + 1, category: 'Groceries', amount: 2000 }
 ];
 
-// FIX: Replaced corrupted base64 string with a valid one.
+const initialTimeOffRequests: TimeOffRequest[] = [
+    { id: 'tor1', employeeId: '2', startDate: new Date(new Date().setDate(new Date().getDate() + 5)), endDate: new Date(new Date().setDate(new Date().getDate() + 7)), reason: 'Family matter', status: 'Pending' },
+    { id: 'tor2', employeeId: '5', startDate: new Date(new Date().setDate(new Date().getDate() - 10)), endDate: new Date(new Date().setDate(new Date().getDate() - 8)), reason: 'Vacation', status: 'Approved' },
+];
+
+const coreCompetencies: Omit<PerformanceItem, 'supervisorComments' | 'employeeComments' | 'rating'>[] = [
+    { id: 'comp1', title: 'Job Knowledge & Skills', description: 'Demonstrates understanding and proficiency in their role.' },
+    { id: 'comp2', title: 'Communication', description: 'Effectively conveys information and listens to others.' },
+    { id: 'comp3', title: 'Teamwork & Collaboration', description: 'Works well with others to achieve common goals.' },
+    { id: 'comp4', title: 'Initiative & Problem Solving', description: 'Proactively identifies issues and finds solutions.' },
+    { id: 'comp5', title: 'Adaptability', description: 'Adjusts to changing priorities and work environments.' },
+];
+
+const createEmptyReviewItems = (items: Omit<PerformanceItem, 'supervisorComments' | 'employeeComments' | 'rating'>[]): PerformanceItem[] => {
+    return items.map(item => ({
+        ...item,
+        supervisorComments: '',
+        employeeComments: '',
+        rating: null,
+    }));
+};
+
+const initialPerformanceReviews: PerformanceReview[] = [
+    {
+        id: 'pr1',
+        employeeId: '2', // Bob Williams
+        supervisorName: 'Alice Johnson',
+        reviewPeriod: `End-of-Year ${new Date().getFullYear() - 1}`,
+        status: 'Completed',
+        reviewDate: new Date(new Date().setMonth(new Date().getMonth() - 6)),
+        competencies: coreCompetencies.map(c => ({...c, supervisorComments: 'Bob meets expectations in this area.', employeeComments: 'I agree.', rating: 'Meets Expectations'})),
+        objectives: [
+            { id: 'obj1', title: 'Complete dementia care training', description: 'Enroll in and complete the advanced dementia care certification.', supervisorComments: 'Completed ahead of schedule.', employeeComments: 'Enjoyed the course.', rating: 'Exceeds Expectations' },
+        ],
+        overallSupervisorComments: 'Bob had a solid performance period, consistently meeting all expectations.',
+        overallEmployeeComments: 'I feel good about my performance and look forward to the next period.',
+        developmentPlan: 'Focus on leadership skills for potential future roles.',
+        supervisorSignatureDate: new Date(new Date().setMonth(new Date().getMonth() - 6)),
+        employeeSignatureDate: new Date(new Date().setMonth(new Date().getMonth() - 6)),
+    },
+    {
+        id: 'pr2',
+        employeeId: '5', // Edward Hands
+        supervisorName: 'Alice Johnson',
+        reviewPeriod: `Mid-Year ${new Date().getFullYear()}`,
+        status: 'Pending Employee Acknowledgment',
+        reviewDate: new Date(new Date().setDate(new Date().getDate() - 5)),
+        competencies: coreCompetencies.map(c => ({...c, supervisorComments: 'Edward is a valuable team member.', employeeComments: '', rating: 'Meets Expectations'})),
+        objectives: [],
+        overallSupervisorComments: 'Awaiting employee comments and sign-off.',
+        overallEmployeeComments: '',
+        developmentPlan: 'Continue professional development.',
+        supervisorSignatureDate: new Date(new Date().setDate(new Date().getDate() - 5)),
+        employeeSignatureDate: null,
+    }
+];
+
+
 const LOGO_BASE64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABWSURBVHhe7c4xEQAgDMCwwv+P4fgyI5Ek720sAECgYgAIFQNAqBgAgokDIAaAEDCAGgAg0AEAFAyAEQDAIA8AEAwAMjEDwBAAwgEAIKQaAEAwAASAQBQAAgAAAABJRU5ErkJggg==';
 
-// HELPER FUNCTIONS
-const formatDate = (date: Date) => date.toISOString().split('T')[0];
+// --- HELPER FUNCTIONS ---
+const formatDate = (date: Date) => {
+    if (!date || typeof date.toISOString !== 'function') {
+        return '';
+    }
+    return date.toISOString().split('T')[0];
+};
 const formatTime = (date: Date) => date.toTimeString().slice(0, 5);
 const getHoursDifference = (start: Date, end: Date) => (end.getTime() - start.getTime()) / (1000 * 60 * 60);
 
-const exportToExcel = (data: { [sheetName: string]: object[] }) => {
+const exportToExcel = (data: { [sheetName: string]: object[] }, employees: Employee[], reviews: PerformanceReview[]) => {
     const wb = XLSX.utils.book_new();
-    for (const sheetName in data) {
-        if (data[sheetName] && data[sheetName].length > 0) {
-            const ws = XLSX.utils.json_to_sheet(data[sheetName]);
+
+    const processData = (sheetName: string, records: any[]) => {
+        if (records && records.length > 0) {
+            const dataToExport = records.map(record => {
+                const newRecord = {...record};
+                if (sheetName === 'Performance Reviews') {
+                    newRecord.employeeName = employees.find(e => e.id === newRecord.employeeId)?.name || 'Unknown';
+                    newRecord.reviewDate = formatDate(newRecord.reviewDate);
+                    newRecord.supervisorSignatureDate = newRecord.supervisorSignatureDate ? formatDate(newRecord.supervisorSignatureDate) : '';
+                    newRecord.employeeSignatureDate = newRecord.employeeSignatureDate ? formatDate(newRecord.employeeSignatureDate) : '';
+                    // Flatten competencies and objectives for easier export
+                    newRecord.competencies = JSON.stringify(newRecord.competencies.map((c: PerformanceItem) => ({ title: c.title, rating: c.rating, supervisorComments: c.supervisorComments, employeeComments: c.employeeComments })));
+                    newRecord.objectives = JSON.stringify(newRecord.objectives.map((o: PerformanceItem) => ({ title: o.title, rating: o.rating, supervisorComments: o.supervisorComments, employeeComments: o.employeeComments })));
+                }
+                return newRecord;
+            });
+            const ws = XLSX.utils.json_to_sheet(dataToExport);
             XLSX.utils.book_append_sheet(wb, ws, sheetName);
         }
+    };
+    
+    for (const sheetName in data) {
+       processData(sheetName, data[sheetName]);
     }
+    processData('Performance Reviews', reviews);
+
     XLSX.writeFile(wb, "CareHomeData.xlsx");
 };
 
 
-// UI COMPONENTS
+// --- UI COMPONENTS ---
 const Card: FC<{ children: React.ReactNode, className?: string }> = ({ children, className = '' }) => (
     <div className={`bg-gray-800 shadow-lg rounded-xl p-6 ${className}`}>
         {children}
@@ -147,24 +229,64 @@ const Modal: FC<{ isOpen: boolean; onClose: () => void; title: string; children:
     );
 };
 
-const LoginScreen: FC<{ onLogin: (role: UserRole) => void }> = ({ onLogin }) => {
+// --- LOGIN COMPONENTS ---
+const LoginScreen: FC<{ onLogin: (email: string) => void, employees: Employee[] }> = ({ onLogin, employees }) => {
+    const [email, setEmail] = useState('');
+    const [error, setError] = useState('');
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const foundEmployee = employees.find(emp => emp.email.toLowerCase() === email.toLowerCase());
+        if (foundEmployee) {
+            onLogin(email);
+        } else {
+            setError('Email not found. Please check the email and try again.');
+        }
+    };
+    
     return (
         <div className="min-h-screen flex flex-col justify-center items-center bg-gray-900 text-white">
-            <Card className="w-full max-w-sm text-center">
-                <img src={LOGO_BASE64} alt="TJM Technologies Logo" className="mx-auto mb-4 w-auto rounded-lg" style={{ filter: 'invert(1)' }} />
-                <p className="text-xl text-gray-300 mb-4">CareHome Business Suite</p>
-                <p className="text-gray-400 mb-8">Please select your role to continue</p>
-                <div className="space-y-4">
-                    <Button onClick={() => onLogin('Owner')} className="w-full text-lg py-3">Login as Owner / Director</Button>
-                    <Button onClick={() => onLogin('Supervisor')} variant="secondary" className="w-full text-lg py-3">Login as Supervisor</Button>
+            <Card className="w-full max-w-sm">
+                 <img src={LOGO_BASE64} alt="TJM Technologies Logo" className="mx-auto mb-2 h-24 w-auto rounded-lg" style={{ filter: 'invert(1)' }} />
+                <h1 className="text-2xl font-bold text-white text-center">TJM Technologies</h1>
+                <p className="text-lg text-gray-400 mb-6 text-center">CareHome Business Suite</p>
+                
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div>
+                        <label htmlFor="email" className="block text-sm font-medium text-gray-300">Email Address</label>
+                        <input
+                            type="email"
+                            id="email"
+                            value={email}
+                            onChange={e => {
+                                setEmail(e.target.value);
+                                setError('');
+                            }}
+                            required
+                            className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white placeholder-gray-400 focus:ring-indigo-500 focus:border-indigo-500"
+                            placeholder="you@corp.com"
+                        />
+                    </div>
+                    {error && <p className="text-red-400 text-sm">{error}</p>}
+                    <div>
+                        <Button type="submit" className="w-full text-lg py-3">Login</Button>
+                    </div>
+                </form>
+                <div className="mt-6 text-xs text-gray-500">
+                     <p className="font-bold mb-2">For demo purposes, use one of these emails:</p>
+                     <ul className="list-disc list-inside space-y-1">
+                        <li><strong>Owner:</strong> hannah.m@corp.com</li>
+                        <li><strong>Supervisor:</strong> alice.j@corp.com</li>
+                        <li><strong>Employee:</strong> bob.w@corp.com</li>
+                     </ul>
                 </div>
-                <p className="text-xs text-gray-500 mt-8">This is a simulated login for demonstration purposes.</p>
             </Card>
         </div>
     );
 };
 
-const FinancialDashboard: FC<{ tenancies: Tenancy[], shifts: Shift[], expenses: Expense[], employees: Employee[], allowances: Allowance[] }> = ({ tenancies, shifts, expenses, employees, allowances }) => {
+// --- DASHBOARD ---
+const FinancialDashboard: FC<{ tenancies: Tenancy[], shifts: Shift[], expenses: Expense[], employees: Employee[], allowances: Allowance[], timeOffRequests: TimeOffRequest[], onUpdateTimeOffRequest: (id: string, status: 'Approved' | 'Denied') => void }> = ({ tenancies, shifts, expenses, employees, allowances, timeOffRequests, onUpdateTimeOffRequest }) => {
     const [filter, setFilter] = useState('This Month');
     const dateRanges = useMemo(() => {
         const now = new Date();
@@ -260,11 +382,17 @@ const FinancialDashboard: FC<{ tenancies: Tenancy[], shifts: Shift[], expenses: 
             return acc;
         }, { revenue: 0, salaries: 0, expenses: 0, net: 0 });
     }, [financialData]);
+
+    const pendingRequests = useMemo(() => {
+        return timeOffRequests
+            .filter(r => r.status === 'Pending')
+            .map(r => ({ ...r, employeeName: employees.find(e => e.id === r.employeeId)?.name || 'Unknown' }));
+    }, [timeOffRequests, employees]);
     
     return (
         <div className="space-y-6 animate-fade-in">
             <div className="flex justify-between items-center">
-                 <h2 className="text-3xl font-bold text-white">Financial Dashboard</h2>
+                 <h2 className="text-3xl font-bold text-white">Dashboard</h2>
                  <div className="flex gap-2 bg-gray-700 p-1 rounded-lg">
                     {['Today', 'This Week', 'This Month', 'This Year', 'All Time'].map(f => (
                         <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1 text-sm font-semibold rounded-md transition ${filter === f ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-600'}`}>
@@ -291,29 +419,48 @@ const FinancialDashboard: FC<{ tenancies: Tenancy[], shifts: Shift[], expenses: 
                     <p className={`text-3xl font-bold ${totals.net >= 0 ? 'text-green-400' : 'text-red-400'}`}>${totals.net.toFixed(2)}</p>
                 </Card>
             </div>
-            <Card className="h-96">
-                <h3 className="text-xl font-semibold mb-4 text-white">Daily Financials</h3>
-                 {financialData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="90%">
-                        <LineChart data={financialData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
-                            <XAxis dataKey="date" stroke="#A0AEC0" />
-                            <YAxis stroke="#A0AEC0" tickFormatter={(value) => `$${value}`} />
-                            <Tooltip contentStyle={{ backgroundColor: '#2D3748', border: 'none', borderRadius: '0.5rem' }} labelStyle={{ color: '#E2E8F0' }} />
-                            <Legend wrapperStyle={{ color: '#E2E8F0' }} />
-                            <Line type="monotone" dataKey="Revenue" stroke="#2DD4BF" strokeWidth={2} dot={false} />
-                            <Line type="monotone" dataKey="Salaries" stroke="#FBBF24" strokeWidth={2} dot={false} />
-                            <Line type="monotone" dataKey="Expenses" stroke="#FB923C" strokeWidth={2} dot={false} />
-                            <Line type="monotone" dataKey="Net" stroke="#4ADE80" strokeWidth={2} dot={false} />
-                        </LineChart>
-                    </ResponsiveContainer>
-                ) : <p className="text-center text-gray-500">No financial data for this period.</p>}
-            </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                 <Card className="h-96 lg:col-span-2">
+                    <h3 className="text-xl font-semibold mb-4 text-white">Daily Financials</h3>
+                    {financialData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="90%">
+                            <LineChart data={financialData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
+                                <XAxis dataKey="date" stroke="#A0AEC0" />
+                                <YAxis stroke="#A0AEC0" tickFormatter={(value) => `$${value}`} />
+                                <Tooltip contentStyle={{ backgroundColor: '#2D3748', border: 'none', borderRadius: '0.5rem' }} labelStyle={{ color: '#E2E8F0' }} />
+                                <Legend wrapperStyle={{ color: '#E2E8F0' }} />
+                                <Line type="monotone" dataKey="Revenue" stroke="#2DD4BF" strokeWidth={2} dot={false} />
+                                <Line type="monotone" dataKey="Salaries" stroke="#FBBF24" strokeWidth={2} dot={false} />
+                                <Line type="monotone" dataKey="Expenses" stroke="#FB923C" strokeWidth={2} dot={false} />
+                                <Line type="monotone" dataKey="Net" stroke="#4ADE80" strokeWidth={2} dot={false} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    ) : <p className="text-center text-gray-500">No financial data for this period.</p>}
+                </Card>
+                <Card className="h-96">
+                    <h3 className="text-xl font-semibold mb-4 text-white">Pending Time Off Requests</h3>
+                    <div className="space-y-3 overflow-y-auto h-[calc(100%-2.5rem)] pr-2">
+                        {pendingRequests.length > 0 ? pendingRequests.map(req => (
+                            <div key={req.id} className="bg-gray-700 p-3 rounded-lg">
+                                <p className="font-semibold text-indigo-300">{req.employeeName}</p>
+                                <p className="text-sm text-gray-300">{formatDate(req.startDate)} to {formatDate(req.endDate)}</p>
+                                {req.reason && <p className="text-xs text-gray-400 mt-1 italic">"{req.reason}"</p>}
+                                <div className="flex gap-2 mt-2">
+                                    <Button onClick={() => onUpdateTimeOffRequest(req.id, 'Approved')} className="flex-1 py-1 text-sm !bg-green-600 hover:!bg-green-700">Approve</Button>
+                                    <Button onClick={() => onUpdateTimeOffRequest(req.id, 'Denied')} variant="danger" className="flex-1 py-1 text-sm">Deny</Button>
+                                </div>
+                            </div>
+                        )) : <p className="text-center text-gray-500">No pending requests.</p>}
+                    </div>
+                </Card>
+            </div>
         </div>
     );
 };
 
-const Scheduler: FC<{ employees: Employee[], shifts: Shift[], onShiftsAdd: (shifts: Omit<Shift, 'id'>[]) => void, onShiftUpdate: (shift: Shift) => void, onShiftAdd: (shift: Omit<Shift, 'id'>) => void, onShiftDelete: (shiftId: string) => void }> = ({ employees, shifts, onShiftsAdd, onShiftUpdate, onShiftAdd, onShiftDelete }) => {
+// --- SCHEDULER ---
+const Scheduler: FC<{ employees: Employee[], shifts: Shift[], timeOffRequests: TimeOffRequest[], onShiftsAdd: (shifts: Omit<Shift, 'id'>[]) => void, onShiftUpdate: (shift: Shift) => void, onShiftAdd: (shift: Omit<Shift, 'id'>) => void, onShiftDelete: (shiftId: string) => void }> = ({ employees, shifts, timeOffRequests, onShiftsAdd, onShiftUpdate, onShiftAdd, onShiftDelete }) => {
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
@@ -388,8 +535,8 @@ const Scheduler: FC<{ employees: Employee[], shifts: Shift[], onShiftsAdd: (shif
                 </div>
             </Card>
 
-            {view === 'day' && <DailySchedulerView employees={employees} shifts={shifts} selectedDate={selectedDate} onEditShift={handleEditClick} onDeleteShift={onShiftDelete} />}
-            {view === 'week' && <WeeklySchedulerView employees={employees} shifts={shifts} weekDays={weekDays} onEditShift={handleEditClick} onAddShift={(date, empId) => handleAddClick(date, empId)} onDeleteShift={onShiftDelete} />}
+            {view === 'day' && <DailySchedulerView employees={employees} shifts={shifts} selectedDate={selectedDate} timeOffRequests={timeOffRequests} onEditShift={handleEditClick} onDeleteShift={onShiftDelete} />}
+            {view === 'week' && <WeeklySchedulerView employees={employees} shifts={shifts} weekDays={weekDays} timeOffRequests={timeOffRequests} onEditShift={handleEditClick} onAddShift={(date, empId) => handleAddClick(date, empId)} onDeleteShift={onShiftDelete} />}
            
             <ShiftFormModal 
                 isOpen={isAddModalOpen}
@@ -414,7 +561,23 @@ const Scheduler: FC<{ employees: Employee[], shifts: Shift[], onShiftsAdd: (shif
     );
 };
 
-const DailySchedulerView: FC<{employees: Employee[], shifts: Shift[], selectedDate: Date, onEditShift: (shift: Shift) => void, onDeleteShift: (shiftId: string) => void}> = ({employees, shifts, selectedDate, onEditShift, onDeleteShift}) => {
+const isEmployeeOnLeave = (employeeId: string, date: Date, timeOffRequests: TimeOffRequest[]) => {
+    const checkDate = new Date(date);
+    checkDate.setHours(12, 0, 0, 0); // Use midday to avoid timezone edge cases
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0,0,0,0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23,59,59,999);
+
+    return timeOffRequests.some(req => 
+        req.employeeId === employeeId &&
+        req.status === 'Approved' &&
+        new Date(req.startDate) <= endOfDay &&
+        new Date(req.endDate) >= startOfDay
+    );
+};
+
+const DailySchedulerView: FC<{employees: Employee[], shifts: Shift[], selectedDate: Date, timeOffRequests: TimeOffRequest[], onEditShift: (shift: Shift) => void, onDeleteShift: (shiftId: string) => void}> = ({employees, shifts, selectedDate, timeOffRequests, onEditShift, onDeleteShift}) => {
      const shiftsForDay = useMemo(() => {
         const startOfDay = new Date(selectedDate);
         startOfDay.setHours(0, 0, 0, 0);
@@ -436,10 +599,17 @@ const DailySchedulerView: FC<{employees: Employee[], shifts: Shift[], selectedDa
                 ))}
             </div>
             <div className="space-y-4 pt-4 relative">
-                {employees.map(employee => (
+                {employees.map(employee => {
+                    const onLeave = isEmployeeOnLeave(employee.id, selectedDate, timeOffRequests);
+                    return (
                     <div key={employee.id} className="flex items-center">
                         <div className="w-32 pr-4 text-right font-semibold text-indigo-300">{employee.name}</div>
                         <div className="flex-1 bg-gray-700 h-10 rounded relative">
+                            {onLeave && (
+                                <div className="absolute inset-0 bg-gray-500/50 flex items-center justify-center text-sm font-semibold text-gray-200 rounded z-10">
+                                    ON LEAVE
+                                </div>
+                            )}
                             {shiftsForDay.filter(s => s.employeeId === employee.id).map(shift => {
                                 const dayStartMs = new Date(selectedDate).setHours(0,0,0,0);
                                 const startMinutes = Math.max(0, (shift.start.getTime() - dayStartMs) / (1000 * 60));
@@ -472,13 +642,13 @@ const DailySchedulerView: FC<{employees: Employee[], shifts: Shift[], selectedDa
                             })}
                         </div>
                     </div>
-                ))}
+                )})}
             </div>
         </Card>
     );
 };
 
-const WeeklySchedulerView: FC<{employees: Employee[], shifts: Shift[], weekDays: Date[], onEditShift: (shift: Shift) => void, onAddShift: (date: Date, employeeId: string) => void, onDeleteShift: (shiftId: string) => void}> = ({employees, shifts, weekDays, onEditShift, onAddShift, onDeleteShift}) => {
+const WeeklySchedulerView: FC<{employees: Employee[], shifts: Shift[], weekDays: Date[], timeOffRequests: TimeOffRequest[], onEditShift: (shift: Shift) => void, onAddShift: (date: Date, employeeId: string) => void, onDeleteShift: (shiftId: string) => void}> = ({employees, shifts, weekDays, timeOffRequests, onEditShift, onAddShift, onDeleteShift}) => {
     return (
         <Card>
             <div className="grid grid-cols-8">
@@ -494,12 +664,16 @@ const WeeklySchedulerView: FC<{employees: Employee[], shifts: Shift[], weekDays:
                     <React.Fragment key={emp.id}>
                         <div className="p-2 border-b border-r border-gray-700 font-semibold text-indigo-300">{emp.name}</div>
                         {weekDays.map(day => {
-                             const startOfDay = new Date(day).setHours(0,0,0,0);
-                             const endOfDay = new Date(day).setHours(23,59,59,999);
+                             const startOfDay = new Date(day);
+                             startOfDay.setHours(0,0,0,0);
+                             const endOfDay = new Date(day);
+                             endOfDay.setHours(23,59,59,999);
                              const dayShifts = shifts.filter(s => s.employeeId === emp.id && s.start < endOfDay && s.end > startOfDay);
+                             const onLeave = isEmployeeOnLeave(emp.id, day, timeOffRequests);
                              
                              return (
-                                <div key={day.toISOString()} onClick={() => onAddShift(day, emp.id)} className="p-2 border-b border-r border-gray-700 last:border-r-0 min-h-[6rem] space-y-1 cursor-pointer hover:bg-gray-700/50 transition-colors">
+                                <div key={day.toISOString()} onClick={() => !onLeave && onAddShift(day, emp.id)} className={`p-2 border-b border-r border-gray-700 last:border-r-0 min-h-[6rem] space-y-1 transition-colors ${onLeave ? 'bg-gray-600/50' : 'cursor-pointer hover:bg-gray-700/50'}`}>
+                                    {onLeave && <div className="text-center text-xs text-gray-300 font-semibold">ON LEAVE</div>}
                                     {dayShifts.map(shift => (
                                         <div key={shift.id} onClick={(e) => { e.stopPropagation(); onEditShift(shift); }} className="bg-indigo-600 text-white text-xs p-1 rounded flex items-center justify-between group cursor-pointer hover:bg-indigo-500">
                                             <span>
@@ -524,147 +698,208 @@ const WeeklySchedulerView: FC<{employees: Employee[], shifts: Shift[], weekDays:
     );
 };
 
+// CopyScheduleModal: do not mutate currentDate passed from parent
+const CopyScheduleModal: FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  shifts: Shift[];
+  onShiftsAdd: (newShifts: Omit<Shift, 'id'>[]) => void;
+  currentDate: Date;
+}> = ({ isOpen, onClose, shifts, onShiftsAdd, currentDate }) => {
+  // Compute example dates using copies so we do NOT mutate the parent-supplied currentDate
+  const exampleCurrent = new Date(currentDate);
+  const exampleWeekStart = new Date(exampleCurrent);
+  exampleWeekStart.setDate(exampleCurrent.getDate() - exampleCurrent.getDay()); // Sunday of current week
+  exampleWeekStart.setHours(0, 0, 0, 0);
 
-const CopyScheduleModal: FC<{isOpen: boolean, onClose: () => void, shifts: Shift[], onShiftsAdd: (newShifts: Omit<Shift, 'id'>[]) => void, currentDate: Date }> = 
-    ({isOpen, onClose, shifts, onShiftsAdd, currentDate}) => {
-    
-    const handleCopy = () => {
-        // Determine the source week from the previous month
-        const sourceDate = new Date(currentDate);
-        sourceDate.setMonth(currentDate.getMonth() - 1);
+  const examplePrevMonth = new Date(exampleCurrent);
+  examplePrevMonth.setMonth(exampleCurrent.getMonth() - 1);
+  examplePrevMonth.setHours(0, 0, 0, 0);
 
-        const sourceWeekStart = new Date(sourceDate);
-        sourceWeekStart.setDate(sourceDate.getDate() - sourceDate.getDay());
-        sourceWeekStart.setHours(0,0,0,0);
+  const handleCopy = () => {
+    // Operate on copies so we don't mutate currentDate
+    const sourceDate = new Date(currentDate);
+    sourceDate.setMonth(sourceDate.getMonth() - 1);
 
-        const sourceWeekEnd = new Date(sourceWeekStart);
-        sourceWeekEnd.setDate(sourceWeekStart.getDate() + 7);
+    const sourceWeekStart = new Date(sourceDate);
+    sourceWeekStart.setDate(sourceDate.getDate() - sourceDate.getDay());
+    sourceWeekStart.setHours(0, 0, 0, 0);
 
-        // Calculate the time difference to add to the copied shifts
-        const targetWeekStart = new Date(currentDate);
-        targetWeekStart.setDate(currentDate.getDate() - currentDate.getDay());
-        targetWeekStart.setHours(0,0,0,0);
+    const sourceWeekEnd = new Date(sourceWeekStart);
+    sourceWeekEnd.setDate(sourceWeekStart.getDate() + 7);
 
-        const timeDiff = targetWeekStart.getTime() - sourceWeekStart.getTime();
-        
-        const shiftsToCopy = shifts.filter(s => s.start >= sourceWeekStart && s.start < sourceWeekEnd);
+    const targetWeekStart = new Date(currentDate);
+    targetWeekStart.setDate(targetWeekStart.getDate() - targetWeekStart.getDay());
+    targetWeekStart.setHours(0, 0, 0, 0);
 
-        const newShifts = shiftsToCopy.map(s => {
-            const newStart = new Date(s.start.getTime() + timeDiff);
-            const newEnd = new Date(s.end.getTime() + timeDiff);
-            return { employeeId: s.employeeId, start: newStart, end: newEnd };
-        });
+    const timeDiff = targetWeekStart.getTime() - sourceWeekStart.getTime();
 
-        if (window.confirm(`This will copy ${newShifts.length} shifts from the week of ${formatDate(sourceWeekStart)} to the week of ${formatDate(targetWeekStart)}. Are you sure?`)) {
-            onShiftsAdd(newShifts);
-            onClose();
-        }
-    };
-
-    return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Copy Schedule">
-            <div className="space-y-4">
-                <p>This action will copy the schedule from the corresponding week of the previous month to the currently selected week.</p>
-                <p className="text-sm text-gray-400">For example, it will replace the schedule for the week of <span className="font-semibold text-indigo-400">{formatDate(new Date(currentDate.setDate(currentDate.getDate() - currentDate.getDay())))}</span> with the schedule from the week of <span className="font-semibold text-indigo-400">{formatDate(new Date(new Date(currentDate).setMonth(currentDate.getMonth()-1)))}</span>.</p>
-                <div className="flex justify-end gap-2 pt-4">
-                    <Button onClick={onClose} variant="secondary">Cancel</Button>
-                    <Button onClick={handleCopy}>Copy From Previous Month</Button>
-                </div>
-            </div>
-        </Modal>
+    const shiftsToCopy = shifts.filter(
+      (s) => s.start >= sourceWeekStart && s.start < sourceWeekEnd
     );
+
+    const newShifts = shiftsToCopy.map((s) => {
+      const newStart = new Date(s.start.getTime() + timeDiff);
+      const newEnd = new Date(s.end.getTime() + timeDiff);
+      return { employeeId: s.employeeId, start: newStart, end: newEnd };
+    });
+
+    if (
+      window.confirm(
+        `This will copy ${newShifts.length} shifts from the week of ${formatDate(
+          sourceWeekStart
+        )} to the week of ${formatDate(targetWeekStart)}. Are you sure?`
+      )
+    ) {
+      onShiftsAdd(newShifts);
+      onClose();
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Copy Schedule">
+      <div className="space-y-4">
+        <p>
+          This action will copy the schedule from the corresponding week of the
+          previous month to the currently selected week.
+        </p>
+        <p className="text-sm text-gray-400">
+          For example, it will replace the schedule for the week of{' '}
+          <span className="font-semibold text-indigo-400">
+            {formatDate(exampleWeekStart)}
+          </span>{' '}
+          with the schedule from the week of{' '}
+          <span className="font-semibold text-indigo-400">
+            {formatDate(examplePrevMonth)}
+          </span>
+          .
+        </p>
+        <div className="flex justify-end gap-2 pt-4">
+          <Button onClick={onClose} variant="secondary">
+            Cancel
+          </Button>
+          <Button onClick={handleCopy}>Copy From Previous Month</Button>
+        </div>
+      </div>
+    </Modal>
+  );
 };
 
-
+// ShiftFormModal: full corrected component (replace the existing ShiftFormModal block)
 const ShiftFormModal: FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    shift: Shift | null;
-    employees: Employee[];
-    onSubmit: (data: Omit<Shift, 'id'> | Shift) => void;
-    selectedDate: Date;
-    initialData: { date: Date, employeeId: string } | null;
+  isOpen: boolean;
+  onClose: () => void;
+  shift: Shift | null;
+  employees: Employee[];
+  onSubmit: (data: Omit<Shift, 'id'> | Shift) => void;
+  selectedDate: Date;
+  initialData: { date: Date; employeeId: string } | null;
 }> = ({ isOpen, onClose, shift, employees, onSubmit, selectedDate, initialData }) => {
-    
-    const [employeeId, setEmployeeId] = useState('');
-    const [startTime, setStartTime] = useState('08:00');
-    const [endTime, setEndTime] = useState('16:00');
-    const [shiftDate, setShiftDate] = useState(formatDate(selectedDate));
+  const [employeeId, setEmployeeId] = useState('');
+  const [startTime, setStartTime] = useState('08:00');
+  const [endTime, setEndTime] = useState('16:00');
+  const [shiftDate, setShiftDate] = useState(formatDate(selectedDate));
 
-    useEffect(() => {
-        if (shift) {
-            setEmployeeId(shift.employeeId);
-            setStartTime(formatTime(shift.start));
-            setEndTime(formatTime(shift.end));
-            setShiftDate(formatDate(shift.start));
-        } else if (initialData) {
-            setEmployeeId(initialData.employeeId);
-            setShiftDate(formatDate(initialData.date));
-            setStartTime('08:00');
-            setEndTime('16:00');
-        } else {
-            setEmployeeId(employees.length > 0 ? employees[0].id : '');
-            setStartTime('08:00');
-            setEndTime('16:00');
-            setShiftDate(formatDate(selectedDate));
-        }
-    }, [shift, employees, isOpen, selectedDate, initialData]);
+  useEffect(() => {
+    if (shift) {
+      setEmployeeId(shift.employeeId);
+      setStartTime(formatTime(shift.start));
+      setEndTime(formatTime(shift.end));
+      setShiftDate(formatDate(shift.start));
+    } else if (initialData) {
+      setEmployeeId(initialData.employeeId);
+      setShiftDate(formatDate(initialData.date));
+      setStartTime('08:00');
+      setEndTime('16:00');
+    } else {
+      setEmployeeId(employees.length > 0 ? employees[0].id : '');
+      setStartTime('08:00');
+      setEndTime('16:00');
+      setShiftDate(formatDate(selectedDate));
+    }
+  }, [shift, employees, isOpen, selectedDate, initialData]);
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        const baseDate = new Date(shiftDate + 'T00:00:00');
-        const [startH, startM] = startTime.split(':').map(Number);
-        const start = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate(), startH, startM);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const baseDate = new Date(shiftDate + 'T00:00:00');
+    const [startH, startM] = startTime.split(':').map(Number);
+    const start = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate(), startH, startM);
 
-        const [endH, endM] = endTime.split(':').map(Number);
-        const end = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate(), endH, endM);
-        
-        if (end <= start) {
-            end.setDate(end.getDate() + 1); // Handle overnight shifts
-        }
+    const [endH, endM] = endTime.split(':').map(Number);
+    const end = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate(), endH, endM);
 
-        const shiftData = { employeeId, start, end };
-        if (shift) {
-            onSubmit({ ...shiftData, id: shift.id });
-        } else {
-            onSubmit(shiftData);
-        }
-    };
-    
-    return (
-        <Modal isOpen={isOpen} onClose={onClose} title={shift ? 'Edit Shift' : 'Add Shift'}>
-            <form onSubmit={handleSubmit} className="space-y-4">
-                 <div>
-                    <label className="block text-sm font-medium text-gray-300">Employee</label>
-                    <select value={employeeId} onChange={e => setEmployeeId(e.target.value)} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white">
-                        {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                    </select>
-                </div>
-                 <div>
-                    <label className="block text-sm font-medium text-gray-300">Date</label>
-                    <input type="date" value={shiftDate} onChange={e => setShiftDate(e.target.value)} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300">Start Time</label>
-                        <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300">End Time</label>
-                        <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
-                    </div>
-                </div>
-                <div className="flex justify-end pt-4">
-                    <div className="flex gap-2">
-                        <Button onClick={onClose} variant="secondary" type="button">Cancel</Button>
-                        <Button type="submit">Save Shift</Button>
-                    </div>
-                </div>
-            </form>
-        </Modal>
-    );
+    if (end <= start) {
+      end.setDate(end.getDate() + 1); // Handle overnight shifts
+    }
+
+    const shiftData = { employeeId, start, end };
+    if (shift) {
+      onSubmit({ ...shiftData, id: shift.id });
+    } else {
+      onSubmit(shiftData);
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title={shift ? 'Edit Shift' : 'Add Shift'}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-300">Employee</label>
+          <select
+            value={employeeId}
+            onChange={(d) => setEmployeeId(d.target.value)}
+            className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white"
+          >
+            {employees.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300">Date</label>
+          <input
+            type="date"
+            value={shiftDate}
+            onChange={(e) => setShiftDate(e.target.value)}
+            className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300">Start Time</label>
+            <input
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300">End Time</label>
+            <input
+              type="time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+              className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white"
+            />
+          </div>
+        </div>
+        <div className="flex justify-end pt-4">
+          <div className="flex gap-2">
+            <Button onClick={onClose} variant="secondary" type="button">
+              Cancel
+            </Button>
+            <Button type="submit">Save Shift</Button>
+          </div>
+        </div>
+      </form>
+    </Modal>
+  );
 };
 
+// --- EMPLOYEES ---
 const EmployeeManager: FC<{ employees: Employee[], onEmployeeAdd: (emp: Omit<Employee, 'id'>) => void, onEmployeeUpdate: (emp: Employee) => void, onEmployeeDelete: (id: string) => void }> = ({ employees, onEmployeeAdd, onEmployeeUpdate, onEmployeeDelete }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
@@ -700,6 +935,7 @@ const EmployeeManager: FC<{ employees: Employee[], onEmployeeAdd: (emp: Omit<Emp
                         <li key={emp.id} className="py-4 flex justify-between items-center">
                             <div>
                                 <p className="text-lg font-semibold text-white">{emp.name}</p>
+                                <p className="text-sm text-gray-400">{emp.email}</p>
                                 <p className="text-gray-400">{emp.position} &bull; Hired: {formatDate(emp.hireDate)}</p>
                                 <p className="text-gray-400">${emp.payRate.toFixed(2)} / hour</p>
                             </div>
@@ -729,6 +965,7 @@ const EmployeeFormModal: FC<{isOpen: boolean, onClose: () => void, employee: Emp
     ({isOpen, onClose, employee, onSubmit}) => {
     
     const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
     const [payRate, setPayRate] = useState(0);
     const [position, setPosition] = useState('');
     const [hireDate, setHireDate] = useState(formatDate(new Date()));
@@ -736,11 +973,13 @@ const EmployeeFormModal: FC<{isOpen: boolean, onClose: () => void, employee: Emp
     useEffect(() => {
         if (employee) {
             setName(employee.name);
+            setEmail(employee.email);
             setPayRate(employee.payRate);
             setPosition(employee.position);
             setHireDate(formatDate(employee.hireDate));
         } else {
             setName('');
+            setEmail('');
             setPayRate(20);
             setPosition('Caregiver');
             setHireDate(formatDate(new Date()));
@@ -749,11 +988,11 @@ const EmployeeFormModal: FC<{isOpen: boolean, onClose: () => void, employee: Emp
     
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if(!name || payRate <= 0 || !position) {
+        if(!name || !email || payRate <= 0 || !position) {
             alert('Please fill out all fields.');
             return;
         }
-        const employeeData = { name, payRate, position, hireDate: new Date(hireDate + 'T00:00:00') };
+        const employeeData = { name, email, payRate, position, hireDate: new Date(hireDate + 'T00:00:00') };
         if (employee) {
             onSubmit({ ...employeeData, id: employee.id });
         } else {
@@ -767,6 +1006,10 @@ const EmployeeFormModal: FC<{isOpen: boolean, onClose: () => void, employee: Emp
                 <div>
                     <label className="block text-sm font-medium text-gray-300">Full Name</label>
                     <input type="text" value={name} onChange={e => setName(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
+                </div>
+                 <div>
+                    <label className="block text-sm font-medium text-gray-300">Email Address</label>
+                    <input type="email" value={email} onChange={e => setEmail(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
                 </div>
                  <div>
                     <label className="block text-sm font-medium text-gray-300">Position</label>
@@ -791,6 +1034,7 @@ const EmployeeFormModal: FC<{isOpen: boolean, onClose: () => void, employee: Emp
     );
 };
 
+// --- CAPITAL EXPENSES ---
 const ExpenseManager: FC<{ expenses: Expense[], forecasts: ExpenseForecast[], expenseCategories: string[], onExpenseAdd: (exp: Omit<Expense, 'id'>) => void, onExpenseUpdate: (exp: Expense) => void, onExpenseDelete: (id: string) => void, onForecastUpdate: (forecast: ExpenseForecast) => void, onCategoryAdd: (name: string) => void, onCategoryDelete: (name: string) => void }> = 
     ({ expenses, forecasts, expenseCategories, onExpenseAdd, onExpenseUpdate, onExpenseDelete, onForecastUpdate, onCategoryAdd, onCategoryDelete }) => {
     
@@ -886,6 +1130,7 @@ const ExpenseManager: FC<{ expenses: Expense[], forecasts: ExpenseForecast[], ex
                                 </div>
                             </li>
                         ))}
+                         {sortedExpenses.length === 0 && <p className="text-center text-gray-500 py-8">No expenses logged.</p>}
                     </ul>
                 </Card>
             )}
@@ -955,7 +1200,6 @@ const ExpenseManager: FC<{ expenses: Expense[], forecasts: ExpenseForecast[], ex
                                 })}
                                 <td className="p-2 text-center font-bold sticky right-0 bg-gray-900">
                                     {(() => {
-                                        // FIX: Removed redundant `.flat()` method. It was likely causing type inference issues.
                                         const grandTotal = forecastData.reduce((acc, {months}) => {
                                             months.forEach(m => {
                                                 acc.forecasted += m.forecasted;
@@ -1033,7 +1277,6 @@ const CategoryManagerModal: FC<{isOpen: boolean, onClose: () => void, categories
     );
 };
 
-
 const ExpenseFormModal: FC<{isOpen: boolean, onClose: () => void, expense: Expense | null, onSubmit: (data: Omit<Expense, 'id'> | Expense) => void, categories: string[] }> =
  ({isOpen, onClose, expense, onSubmit, categories}) => {
     
@@ -1100,6 +1343,7 @@ const ExpenseFormModal: FC<{isOpen: boolean, onClose: () => void, expense: Expen
     );
  };
 
+ // --- SALARY EXPENSES ---
 const SalaryExpenses: FC<{ shifts: Shift[], employees: Employee[] }> = ({ shifts, employees }) => {
     const [period, setPeriod] = useState<'Day' | 'Week' | 'Month' | 'Year'>('Month');
     const [selectedDate, setSelectedDate] = useState(new Date());
@@ -1225,410 +1469,195 @@ const SalaryExpenses: FC<{ shifts: Shift[], employees: Employee[] }> = ({ shifts
                 <Card className="lg:col-span-1">
                     <h3 className="text-xl font-semibold mb-4">Filter Employees</h3>
                     <div className="flex gap-2 mb-4">
-                        <Button onClick={selectAllEmployees} variant="secondary" className="flex-1 text-sm">Select All</Button>
-                        <Button onClick={deselectAllEmployees} variant="secondary" className="flex-1 text-sm">Deselect All</Button>
+                        <Button onClick={selectAllEmployees} variant="secondary" className="flex-1 text-sm py-1">Select All</Button>
+                        <Button onClick={deselectAllEmployees} variant="secondary" className="flex-1 text-sm py-1">Deselect All</Button>
                     </div>
                     <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
-                        {employees.map(emp => (
-                            <label key={emp.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-gray-700 cursor-pointer">
+                        {employees.sort((a,b) => a.name.localeCompare(b.name)).map(emp => (
+                            <label key={emp.id} className="flex items-center gap-2 p-2 bg-gray-700 rounded-md cursor-pointer hover:bg-gray-600">
                                 <input
                                     type="checkbox"
                                     checked={selectedEmployeeIds.includes(emp.id)}
                                     onChange={() => handleEmployeeSelection(emp.id)}
-                                    className="h-4 w-4 rounded bg-gray-600 border-gray-500 text-indigo-600 focus:ring-indigo-500"
-                                    aria-label={`Select ${emp.name}`}
+                                    className="h-4 w-4 rounded bg-gray-900 border-gray-600 text-indigo-600 focus:ring-indigo-500"
                                 />
-                                <span className="text-white">{emp.name}</span>
+                                <span>{emp.name}</span>
                             </label>
                         ))}
                     </div>
                 </Card>
-                 <div className="lg:col-span-2 space-y-6">
-                    <Card>
-                         <h3 className="text-gray-400">Total Salaries for Period</h3>
-                         <p className="text-4xl font-bold text-cyan-400">${totalSalary.toFixed(2)}</p>
-                    </Card>
-                    <Card>
-                        <h3 className="text-xl font-semibold mb-4">Salary Breakdown by Employee</h3>
-                         <div className="max-h-[26rem] overflow-y-auto">
-                            <table className="w-full text-left">
-                                <thead>
-                                    <tr className="border-b border-gray-600">
-                                        <th className="p-2">Employee</th>
-                                        <th className="p-2 text-right">Total Hours</th>
-                                        <th className="p-2 text-right">Total Pay</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {salaryData.map(data => (
-                                        <tr key={data.name} className="border-b border-gray-700 hover:bg-gray-700/50">
-                                            <td className="p-2 font-semibold text-indigo-300">{data.name}</td>
-                                            <td className="p-2 text-right">{data.totalHours.toFixed(2)}</td>
-                                            <td className="p-2 text-right font-semibold text-yellow-400">${data.totalPay.toFixed(2)}</td>
-                                        </tr>
-                                    ))}
-                                    {salaryData.length === 0 && (
-                                        <tr>
-                                            <td colSpan={3} className="text-center p-4 text-gray-500">No salary data for selected employees and period.</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                         </div>
-                    </Card>
-                 </div>
+                <Card className="lg:col-span-2">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-xl font-semibold">Salary Breakdown</h3>
+                        <div className="text-right">
+                            <p className="text-gray-400">Total for Period</p>
+                            <p className="text-2xl font-bold text-yellow-400">${totalSalary.toFixed(2)}</p>
+                        </div>
+                    </div>
+                    <div className="max-h-[26rem] overflow-y-auto">
+                        <ul className="divide-y divide-gray-700">
+                            {salaryData.map(data => (
+                                <li key={data.name} className="py-3 flex justify-between items-center">
+                                    <div>
+                                        <p className="font-semibold text-white">{data.name}</p>
+                                        <p className="text-sm text-gray-400">{data.totalHours.toFixed(2)} hours</p>
+                                    </div>
+                                    <p className="text-lg font-semibold text-green-400">${data.totalPay.toFixed(2)}</p>
+                                </li>
+                            ))}
+                        </ul>
+                        {salaryData.length === 0 && <p className="text-center text-gray-500 py-8">No salary data for the selected criteria.</p>}
+                    </div>
+                </Card>
             </div>
         </div>
     );
 };
- 
-const RevenueManager: FC<{ residents: Resident[], allowances: Allowance[], rooms: Room[], tenancies: Tenancy[], onRoomUpdate: (rooms: Room[]) => void, onTenancyAdd: (tenancy: Omit<Tenancy, 'id'>) => void, onTenancyUpdate: (tenancy: Tenancy) => void, onResidentAdd: (res: Omit<Resident, 'id'>) => void, onResidentUpdate: (res: Resident) => void, onResidentDelete: (id: string) => void, onAllowanceAdd: (all: Omit<Allowance, 'id'>) => void, onAllowanceDelete: (id: string) => void }> = 
-    (props) => {
-    
-    const [isResidentModalOpen, setIsResidentModalOpen] = useState(false);
-    const [isAllowanceModalOpen, setIsAllowanceModalOpen] = useState(false);
-    const [isRoomSetupModalOpen, setIsRoomSetupModalOpen] = useState(false);
+
+// --- REVENUE ---
+const RevenueManager: FC<{
+    residents: Resident[],
+    rooms: Room[],
+    tenancies: Tenancy[],
+    onTenancyUpdate: (tenancy: Tenancy) => void,
+    onTenancyAdd: (tenancy: Omit<Tenancy, 'id'>) => void,
+}> = ({ residents, rooms, tenancies, onTenancyUpdate, onTenancyAdd }) => {
     const [isTenancyModalOpen, setIsTenancyModalOpen] = useState(false);
-    
-    const [editingResident, setEditingResident] = useState<Resident | null>(null);
     const [editingTenancy, setEditingTenancy] = useState<Tenancy | null>(null);
-    const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
 
-    const [viewDate, setViewDate] = useState(new Date());
+    const activeTenancies = useMemo(() => {
+        const now = new Date();
+        return tenancies.filter(t => t.startDate <= now && (!t.endDate || t.endDate >= now));
+    }, [tenancies]);
 
-    const handleAddResidentClick = () => {
-        setEditingResident(null);
-        setIsResidentModalOpen(true);
-    };
+    const totalMonthlyRevenue = useMemo(() => {
+        return activeTenancies.reduce((sum, t) => sum + t.monthlyRate, 0);
+    }, [activeTenancies]);
 
-    const handleEditResidentClick = (resident: Resident) => {
-        setEditingResident(resident);
-        setIsResidentModalOpen(true);
-    };
-    
-    const handleAssignClick = (roomId: string) => {
-        setSelectedRoomId(roomId);
-        setEditingTenancy(null);
-        setIsTenancyModalOpen(true);
-    };
-    
-    const handleEditTenancyClick = (tenancy: Tenancy) => {
-        setSelectedRoomId(tenancy.roomId);
+    const occupancyRate = useMemo(() => {
+        return (activeTenancies.length / rooms.length) * 100;
+    }, [activeTenancies, rooms]);
+
+    const handleEditTenancy = (tenancy: Tenancy) => {
         setEditingTenancy(tenancy);
         setIsTenancyModalOpen(true);
     };
 
-    const handleTenancyFormSubmit = (tenancyData: Omit<Tenancy, 'id'> | Tenancy) => {
-        if ('id' in tenancyData) {
-            props.onTenancyUpdate(tenancyData);
+    const handleAddTenancy = () => {
+        setEditingTenancy(null);
+        setIsTenancyModalOpen(true);
+    };
+
+    const handleTenancyFormSubmit = (data: Tenancy | Omit<Tenancy, 'id'>) => {
+        if ('id' in data) {
+            onTenancyUpdate(data);
         } else {
-            props.onTenancyAdd(tenancyData);
+            onTenancyAdd(data);
         }
         setIsTenancyModalOpen(false);
     };
-
-    const handleResidentFormSubmit = (residentData: Omit<Resident, 'id'> | Resident) => {
-        if ('id' in residentData) {
-            props.onResidentUpdate(residentData);
-        } else {
-            props.onResidentAdd(residentData);
-        }
-        setIsResidentModalOpen(false);
-    };
-
-    const handleAllowanceFormSubmit = (allowanceData: Omit<Allowance, 'id'>) => {
-        props.onAllowanceAdd(allowanceData);
-        setIsAllowanceModalOpen(false);
-    };
-
-    const allowancesWithResidentNames = useMemo(() => props.allowances.map(a => {
-        const resident = props.residents.find(r => r.id === a.residentId);
-        return { ...a, residentName: resident?.name || 'Unknown' };
-    }).sort((a,b) => b.date.getTime() - a.date.getTime()), [props.allowances, props.residents]);
     
-    const getTenancyForRoom = (roomId: string, date: Date): (Tenancy & {residentName: string}) | null => {
-        const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
-        const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-
-        const activeTenancy = props.tenancies.find(t => 
-            t.roomId === roomId &&
-            new Date(t.startDate) <= monthEnd &&
-            (!t.endDate || new Date(t.endDate) >= monthStart)
-        );
-
-        if (activeTenancy) {
-            const resident = props.residents.find(r => r.id === activeTenancy.residentId);
-            return { ...activeTenancy, residentName: resident?.name || 'Unknown' };
-        }
-        return null;
-    };
+    const getResidentName = (id: string) => residents.find(r => r.id === id)?.name || 'Unknown';
+    const getRoomNumber = (id: string) => rooms.find(r => r.id === id)?.roomNumber || 'N/A';
     
     return (
-        <div className="space-y-8 animate-fade-in">
+        <div className="space-y-6 animate-fade-in">
              <div className="flex justify-between items-center">
-                <h2 className="text-3xl font-bold text-white">Room & Revenue Management</h2>
-                <div className="flex gap-4 items-center">
-                    <input type="month" value={`${viewDate.getFullYear()}-${(viewDate.getMonth()+1).toString().padStart(2,'0')}`} 
-                           onChange={e => setViewDate(new Date(e.target.value + '-02T00:00:00'))}
-                           className="bg-gray-700 p-2 rounded-md"
-                    />
-                    <Button onClick={() => setIsRoomSetupModalOpen(true)} variant="secondary">Setup Rooms</Button>
-                </div>
+                <h2 className="text-3xl font-bold text-white">Revenue & Tenancy</h2>
+                <Button onClick={handleAddTenancy}>Add Tenancy</Button>
             </div>
-            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <Card>
+                    <h3 className="text-gray-400">Total Monthly Revenue</h3>
+                    <p className="text-3xl font-bold text-cyan-400">${totalMonthlyRevenue.toLocaleString()}</p>
+                </Card>
+                <Card>
+                    <h3 className="text-gray-400">Occupancy Rate</h3>
+                    <p className="text-3xl font-bold text-green-400">{occupancyRate.toFixed(1)}%</p>
+                    <p className="text-gray-500">{activeTenancies.length} of {rooms.length} rooms</p>
+                </Card>
+            </div>
             <Card>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-                    {props.rooms.map(room => {
-                        const tenancy = getTenancyForRoom(room.id, viewDate);
-                        return (
-                            <div key={room.id} className={`p-4 rounded-lg border-2 ${tenancy ? 'border-green-500 bg-green-500/10' : 'border-gray-600'}`}>
-                                <h4 className="font-bold text-lg text-white">Room {room.roomNumber}</h4>
-                                {tenancy ? (
-                                    <div className="text-sm mt-2">
-                                        <p className="font-semibold text-gray-200">{tenancy.residentName}</p>
-                                        <p className="text-gray-400">${tenancy.monthlyRate}/mo</p>
-                                        <p className="text-gray-400">Since: {formatDate(tenancy.startDate)}</p>
-                                        <Button onClick={() => handleEditTenancyClick(tenancy)} variant="secondary" className="w-full mt-2 py-1 text-xs">Edit Tenancy</Button>
-                                    </div>
-                                ) : (
-                                     <div className="text-sm mt-2">
-                                        <p className="text-gray-400">Vacant</p>
-                                        <Button onClick={() => handleAssignClick(room.id)} className="w-full mt-2 py-1 text-xs">Assign Resident</Button>
-                                    </div>
-                                )}
+                <h3 className="text-xl font-semibold mb-4 text-white">Current Tenancies</h3>
+                <ul className="divide-y divide-gray-700">
+                    {tenancies.map(t => (
+                        <li key={t.id} className="py-4 flex justify-between items-center">
+                             <div>
+                                <p className="text-lg font-semibold text-white">{getResidentName(t.residentId)}</p>
+                                <p className="text-sm text-gray-400">Room {getRoomNumber(t.roomId)} &bull; Start: {formatDate(t.startDate)}</p>
+                                {t.endDate && <p className="text-sm text-gray-400">End: {formatDate(t.endDate)}</p>}
                             </div>
-                        )
-                    })}
-                </div>
+                             <div className="flex items-center gap-4">
+                                <p className="text-xl font-bold text-green-400">${t.monthlyRate.toLocaleString()}<span className="text-sm text-gray-400">/mo</span></p>
+                                <Button onClick={() => handleEditTenancy(t)} variant="secondary">Edit</Button>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
             </Card>
-
-            <div>
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-3xl font-bold text-white">Manage Residents</h2>
-                    <Button onClick={handleAddResidentClick}>Add Resident</Button>
-                </div>
-                <Card>
-                    <ul className="divide-y divide-gray-700">
-                        {props.residents.map(res => (
-                            <li key={res.id} className="py-4 flex justify-between items-center">
-                                <p className="text-lg font-semibold text-white">{res.name}</p>
-                                <div className="flex gap-2">
-                                    <Button onClick={() => handleEditResidentClick(res)} variant="secondary">Edit</Button>
-                                    <Button onClick={() => { if(window.confirm('Are you sure?')) props.onResidentDelete(res.id); }} variant="danger">Delete</Button>
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
-                </Card>
-            </div>
-             <div>
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-3xl font-bold text-white">Resident Allowances</h2>
-                    <Button onClick={() => setIsAllowanceModalOpen(true)} disabled={props.residents.length === 0}>Add Allowance</Button>
-                </div>
-                <Card>
-                     <ul className="divide-y divide-gray-700">
-                        {allowancesWithResidentNames.map(allow => (
-                            <li key={allow.id} className="py-4 flex justify-between items-center">
-                                <div>
-                                    <p className="text-lg font-semibold text-white">{allow.description}</p>
-                                    <p className="text-sm text-gray-400">{allow.residentName} &bull; {formatDate(allow.date)}</p>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                   <p className="text-xl font-bold text-yellow-400">${allow.amount.toFixed(2)}</p>
-                                   <Button onClick={() => { if (window.confirm('Are you sure?')) props.onAllowanceDelete(allow.id); }} variant="danger">Delete</Button>
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
-                </Card>
-            </div>
-            <ResidentFormModal isOpen={isResidentModalOpen} onClose={() => setIsResidentModalOpen(false)} resident={editingResident} onSubmit={handleResidentFormSubmit} />
-            <AllowanceFormModal isOpen={isAllowanceModalOpen} onClose={() => setIsAllowanceModalOpen(false)} residents={props.residents} onSubmit={handleAllowanceFormSubmit} />
-            <RoomSetupModal isOpen={isRoomSetupModalOpen} onClose={() => setIsRoomSetupModalOpen(false)} currentRoomCount={props.rooms.length} onSave={props.onRoomUpdate} />
-            <TenancyFormModal isOpen={isTenancyModalOpen} onClose={() => setIsTenancyModalOpen(false)} tenancy={editingTenancy} residents={props.residents} roomId={selectedRoomId} onSubmit={handleTenancyFormSubmit} />
+            <TenancyFormModal 
+                isOpen={isTenancyModalOpen}
+                onClose={() => setIsTenancyModalOpen(false)}
+                tenancy={editingTenancy}
+                residents={residents}
+                rooms={rooms}
+                tenancies={tenancies}
+                onSubmit={handleTenancyFormSubmit}
+            />
         </div>
     );
 };
 
-const RoomSetupModal: FC<{isOpen: boolean, onClose: () => void, currentRoomCount: number, onSave: (rooms: Room[]) => void}> = ({isOpen, onClose, currentRoomCount, onSave}) => {
-    const [numRooms, setNumRooms] = useState(currentRoomCount);
-    
-    useEffect(() => {
-        setNumRooms(currentRoomCount);
-    }, [currentRoomCount, isOpen]);
-    
-    const handleSave = () => {
-        if(window.confirm(`This will set the number of rooms to ${numRooms}. This may remove existing rooms and their tenancy assignments. Are you sure?`)) {
-            const newRooms = Array.from({length: numRooms}, (_, i) => ({ id: `room${i+1}`, roomNumber: (101+i).toString() }));
-            onSave(newRooms);
-            onClose();
-        }
-    };
-
-    return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Setup Facility Rooms">
-            <div className="space-y-4">
-                <p>Select the total number of rooms available in your facility.</p>
-                <div className="flex items-center gap-2">
-                    <label>Number of Rooms:</label>
-                    <input type="number" value={numRooms} onChange={e => setNumRooms(parseInt(e.target.value))} className="w-24 bg-gray-700 p-2 rounded-md" />
-                </div>
-                 <div className="flex justify-end gap-2 pt-4">
-                    <Button onClick={onClose} variant="secondary">Cancel</Button>
-                    <Button onClick={handleSave}>Save Settings</Button>
-                </div>
-            </div>
-        </Modal>
-    );
-}
-
-const TenancyFormModal: FC<{isOpen: boolean, onClose: () => void, tenancy: Tenancy | null, roomId: string | null, residents: Resident[], onSubmit: (data: Omit<Tenancy, 'id'> | Tenancy) => void}> = 
-({isOpen, onClose, tenancy, roomId, residents, onSubmit}) => {
-    
+const TenancyFormModal: FC<{
+    isOpen: boolean,
+    onClose: () => void,
+    tenancy: Tenancy | null,
+    residents: Resident[],
+    rooms: Room[],
+    tenancies: Tenancy[],
+    onSubmit: (data: Tenancy | Omit<Tenancy, 'id'>) => void
+}> = ({ isOpen, onClose, tenancy, residents, rooms, tenancies, onSubmit }) => {
     const [residentId, setResidentId] = useState('');
+    const [roomId, setRoomId] = useState('');
     const [startDate, setStartDate] = useState(formatDate(new Date()));
     const [endDate, setEndDate] = useState('');
     const [monthlyRate, setMonthlyRate] = useState(5000);
-    
+
+    const availableRooms = useMemo(() => {
+        const occupiedRoomIds = new Set(tenancies.filter(t => !t.endDate && t.id !== tenancy?.id).map(t => t.roomId));
+        return rooms.filter(r => !occupiedRoomIds.has(r.id));
+    }, [rooms, tenancies, tenancy]);
+
     useEffect(() => {
-        if(tenancy) {
+        if (tenancy) {
             setResidentId(tenancy.residentId);
+            setRoomId(tenancy.roomId);
             setStartDate(formatDate(tenancy.startDate));
             setEndDate(tenancy.endDate ? formatDate(tenancy.endDate) : '');
             setMonthlyRate(tenancy.monthlyRate);
         } else {
-            setResidentId(residents.length > 0 ? residents[0].id : '');
+            setResidentId(residents[0]?.id || '');
+            setRoomId(availableRooms[0]?.id || '');
             setStartDate(formatDate(new Date()));
             setEndDate('');
             setMonthlyRate(5000);
         }
-    }, [tenancy, isOpen, residents]);
+    }, [tenancy, isOpen, residents, availableRooms]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!roomId || !residentId || !startDate || monthlyRate <= 0) {
-            alert('Please fill out all required fields.');
-            return;
-        }
-
-        const tenancyData = { 
-            roomId, 
-            residentId, 
+        const data = {
+            residentId,
+            roomId,
             startDate: new Date(startDate + 'T00:00:00'),
             endDate: endDate ? new Date(endDate + 'T00:00:00') : null,
             monthlyRate
         };
-
-        if (tenancy) {
-            onSubmit({ ...tenancyData, id: tenancy.id });
-        } else {
-            onSubmit(tenancyData);
-        }
+        onSubmit(tenancy ? { ...data, id: tenancy.id } : data);
     };
     
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={tenancy ? "Edit Tenancy" : "Assign Resident to Room"}>
-             <form onSubmit={handleSubmit} className="space-y-4">
-                 <div>
-                    <label className="block text-sm font-medium text-gray-300">Resident</label>
-                    <select value={residentId} onChange={e => setResidentId(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white">
-                        <option value="">Select Resident...</option>
-                        {residents.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                    </select>
-                </div>
-                 <div>
-                    <label className="block text-sm font-medium text-gray-300">Monthly Rate</label>
-                    <input type="number" step="0.01" value={monthlyRate} onChange={e => setMonthlyRate(parseFloat(e.target.value))} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
-                </div>
-                 <div className="grid grid-cols-2 gap-4">
-                     <div>
-                        <label className="block text-sm font-medium text-gray-300">Start Date (Move-in)</label>
-                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
-                    </div>
-                     <div>
-                        <label className="block text-sm font-medium text-gray-300">End Date (Move-out)</label>
-                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
-                    </div>
-                 </div>
-                 <div className="flex justify-end gap-2 pt-4">
-                    <Button onClick={onClose} variant="secondary" type="button">Cancel</Button>
-                    <Button type="submit">Save Tenancy</Button>
-                </div>
-             </form>
-        </Modal>
-    );
-};
-
-const ResidentFormModal: FC<{isOpen: boolean, onClose: () => void, resident: Resident | null, onSubmit: (data: Omit<Resident, 'id'> | Resident) => void }> =
- ({isOpen, onClose, resident, onSubmit}) => {
-    const [name, setName] = useState('');
-
-    useEffect(() => {
-        if (resident) {
-            setName(resident.name);
-        } else {
-            setName('');
-        }
-    }, [resident, isOpen]);
-    
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if(!name) {
-            alert('Please provide a name.');
-            return;
-        }
-        const residentData = { name };
-        if (resident) {
-            onSubmit({ ...residentData, id: resident.id });
-        } else {
-            onSubmit(residentData);
-        }
-    };
-
-    return (
-        <Modal isOpen={isOpen} onClose={onClose} title={resident ? 'Edit Resident' : 'Add Resident'}>
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-300">Full Name</label>
-                    <input type="text" value={name} onChange={e => setName(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
-                </div>
-                <div className="flex justify-end gap-2 pt-4">
-                    <Button onClick={onClose} variant="secondary" type="button">Cancel</Button>
-                    <Button type="submit">Save Resident</Button>
-                </div>
-            </form>
-        </Modal>
-    );
-};
-
-const AllowanceFormModal: FC<{isOpen: boolean, onClose: () => void, residents: Resident[], onSubmit: (data: Omit<Allowance, 'id'>) => void }> =
- ({isOpen, onClose, residents, onSubmit}) => {
-    const [residentId, setResidentId] = useState('');
-    const [date, setDate] = useState(formatDate(new Date()));
-    const [description, setDescription] = useState('');
-    const [amount, setAmount] = useState(50);
-
-    useEffect(() => {
-        if (isOpen) {
-            setResidentId(residents.length > 0 ? residents[0].id : '');
-            setDate(formatDate(new Date()));
-            setDescription('Weekly allowance');
-            setAmount(50);
-        }
-    }, [isOpen, residents]);
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if(!residentId || !description || amount <= 0) {
-            alert('Please fill out all fields.');
-            return;
-        }
-        onSubmit({ residentId, date: new Date(date + 'T00:00:00'), description, amount });
-    };
-
-    return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Add Allowance">
+        <Modal isOpen={isOpen} onClose={onClose} title={tenancy ? 'Edit Tenancy' : 'Add Tenancy'}>
             <form onSubmit={handleSubmit} className="space-y-4">
                  <div>
                     <label className="block text-sm font-medium text-gray-300">Resident</label>
@@ -1637,210 +1666,631 @@ const AllowanceFormModal: FC<{isOpen: boolean, onClose: () => void, residents: R
                     </select>
                 </div>
                  <div>
-                    <label className="block text-sm font-medium text-gray-300">Date</label>
-                    <input type="date" value={date} onChange={e => setDate(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
+                    <label className="block text-sm font-medium text-gray-300">Room</label>
+                    <select value={roomId} onChange={e => setRoomId(e.target.value)} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white">
+                        {tenancy && !availableRooms.find(r => r.id === tenancy.roomId) && <option key={tenancy.roomId} value={tenancy.roomId}>Room {rooms.find(r => r.id === tenancy.roomId)?.roomNumber} (Current)</option>}
+                        {availableRooms.map(r => <option key={r.id} value={r.id}>Room {r.roomNumber}</option>)}
+                    </select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                     <div>
+                        <label className="block text-sm font-medium text-gray-300">Start Date</label>
+                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
+                    </div>
+                     <div>
+                        <label className="block text-sm font-medium text-gray-300">End Date (optional)</label>
+                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
+                    </div>
                 </div>
                  <div>
-                    <label className="block text-sm font-medium text-gray-300">Description</label>
-                    <input type="text" value={description} onChange={e => setDescription(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
+                    <label className="block text-sm font-medium text-gray-300">Monthly Rate</label>
+                    <input type="number" step="0.01" value={monthlyRate} onChange={e => setMonthlyRate(parseFloat(e.target.value))} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
                 </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-300">Amount</label>
-                    <input type="number" step="0.01" value={amount} onChange={e => setAmount(parseFloat(e.target.value))} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
-                </div>
-                 <div className="flex justify-end gap-2 pt-4">
+                <div className="flex justify-end gap-2 pt-4">
                     <Button onClick={onClose} variant="secondary" type="button">Cancel</Button>
-                    <Button type="submit">Save Allowance</Button>
+                    <Button type="submit">Save</Button>
                 </div>
             </form>
         </Modal>
     );
 };
-const App: FC = () => {
-    const [userRole, setUserRole] = useState<UserRole | null>(null);
 
+// --- MY PORTAL ---
+const MyPortal: FC<{
+    loggedInEmployee: Employee;
+    shifts: Shift[];
+    timeOffRequests: TimeOffRequest[];
+    onTimeOffRequestAdd: (req: Omit<TimeOffRequest, 'id' | 'status'>) => void;
+}> = ({ loggedInEmployee, shifts, timeOffRequests, onTimeOffRequestAdd }) => {
+    
+    const myShifts = useMemo(() => {
+        const now = new Date();
+        now.setHours(0,0,0,0);
+        return shifts
+            .filter(s => s.employeeId === loggedInEmployee.id && s.start >= now)
+            .sort((a, b) => a.start.getTime() - b.start.getTime())
+            .slice(0, 5); // Show next 5 shifts
+    }, [shifts, loggedInEmployee]);
+    
+    const myRequests = useMemo(() => {
+        return timeOffRequests
+            .filter(r => r.employeeId === loggedInEmployee.id)
+            .sort((a,b) => b.startDate.getTime() - a.startDate.getTime());
+    }, [timeOffRequests, loggedInEmployee]);
+    
+    return (
+        <div className="space-y-6 animate-fade-in">
+             <h2 className="text-3xl font-bold text-white">Welcome, {loggedInEmployee.name}</h2>
+             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                    <h3 className="text-xl font-semibold mb-4">My Upcoming Shifts</h3>
+                    {myShifts.length > 0 ? (
+                        <ul className="divide-y divide-gray-700">
+                            {myShifts.map(shift => (
+                                <li key={shift.id} className="py-3">
+                                    <p className="font-semibold">{shift.start.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
+                                    <p className="text-gray-300">{formatTime(shift.start)} - {formatTime(shift.end)}</p>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : <p className="text-gray-400">No upcoming shifts scheduled.</p>}
+                </Card>
+                <div className="space-y-6">
+                    <Card>
+                        <h3 className="text-xl font-semibold mb-4">Request Time Off</h3>
+                        <TimeOffRequestForm employeeId={loggedInEmployee.id} onSubmit={onTimeOffRequestAdd} />
+                    </Card>
+                     <Card>
+                        <h3 className="text-xl font-semibold mb-4">My Requests</h3>
+                        <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
+                             {myRequests.length > 0 ? myRequests.map(req => {
+                                const statusColors = { Pending: 'text-yellow-400', Approved: 'text-green-400', Denied: 'text-red-400' };
+                                return (
+                                <div key={req.id} className="p-3 bg-gray-700 rounded">
+                                    <div className="flex justify-between items-center">
+                                        <p className="font-semibold">{formatDate(req.startDate)} to {formatDate(req.endDate)}</p>
+                                        <p className={`font-bold text-sm ${statusColors[req.status]}`}>{req.status}</p>
+                                    </div>
+                                    <p className="text-sm text-gray-400 italic">"{req.reason}"</p>
+                                </div>
+                             )}) : <p className="text-gray-400">No time off requests found.</p>}
+                        </div>
+                    </Card>
+                </div>
+             </div>
+        </div>
+    );
+};
+
+const TimeOffRequestForm: FC<{employeeId: string, onSubmit: (req: Omit<TimeOffRequest, 'id' | 'status'>) => void}> = ({ employeeId, onSubmit }) => {
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [reason, setReason] = useState('');
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!startDate || !endDate) {
+            alert('Please select a start and end date.');
+            return;
+        }
+        onSubmit({
+            employeeId,
+            startDate: new Date(startDate + 'T00:00:00'),
+            endDate: new Date(endDate + 'T00:00:00'),
+            reason
+        });
+        setStartDate('');
+        setEndDate('');
+        setReason('');
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+                 <div>
+                    <label className="block text-sm font-medium text-gray-300">Start Date</label>
+                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
+                </div>
+                 <div>
+                    <label className="block text-sm font-medium text-gray-300">End Date</label>
+                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
+                </div>
+            </div>
+            <div>
+                <label className="block text-sm font-medium text-gray-300">Reason (optional)</label>
+                <input type="text" value={reason} onChange={e => setReason(e.target.value)} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
+            </div>
+            <div className="text-right">
+                <Button type="submit">Submit Request</Button>
+            </div>
+        </form>
+    );
+};
+
+// --- PERFORMANCE REVIEWS ---
+const CreateReviewModal: FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    employeesToReview: Employee[];
+    onCreate: (employeeId: string, period: 'Mid-Year' | 'End-of-Year', year: number) => void;
+}> = ({ isOpen, onClose, employeesToReview, onCreate }) => {
+    const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
+    const [year, setYear] = useState(new Date().getFullYear());
+    const [period, setPeriod] = useState<'Mid-Year' | 'End-of-Year'>('Mid-Year');
+    
+    const availableYears = useMemo(() => {
+        const currentYear = new Date().getFullYear();
+        return [currentYear + 1, currentYear, currentYear - 1];
+    }, []);
+
+    useEffect(() => {
+        if (employeesToReview.length > 0) {
+            setSelectedEmployeeId(employeesToReview[0].id);
+        }
+    }, [employeesToReview, isOpen]);
+
+    const handleCreate = () => {
+        if (selectedEmployeeId) {
+            onCreate(selectedEmployeeId, period, year);
+            onClose();
+        } else {
+            alert('Please select an employee.');
+        }
+    };
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Create New Performance Review">
+            <div className="space-y-4">
+                 <div>
+                    <label className="block text-sm font-medium text-gray-300">Employee</label>
+                    <select value={selectedEmployeeId} onChange={e => setSelectedEmployeeId(e.target.value)} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white">
+                        {employeesToReview.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                    </select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300">Review Period</label>
+                         <select value={period} onChange={e => setPeriod(e.target.value as 'Mid-Year' | 'End-of-Year')} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white">
+                            <option value="Mid-Year">Mid-Year</option>
+                            <option value="End-of-Year">End-of-Year</option>
+                        </select>
+                    </div>
+                     <div>
+                        <label className="block text-sm font-medium text-gray-300">Year</label>
+                         <select value={year} onChange={e => setYear(parseInt(e.target.value))} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white">
+                            {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+                        </select>
+                    </div>
+                </div>
+                <div className="flex justify-end gap-2 pt-4">
+                    <Button onClick={onClose} variant="secondary">Cancel</Button>
+                    <Button onClick={handleCreate}>Create Review</Button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
+const PerformanceReviews: FC<{
+    loggedInUser: { role: UserRole, employee?: Employee };
+    reviews: PerformanceReview[];
+    employees: Employee[];
+    onReviewCreate: (employeeId: string, period: 'Mid-Year' | 'End-of-Year', year: number) => void;
+    onReviewUpdate: (review: PerformanceReview) => void;
+}> = ({ loggedInUser, reviews, employees, onReviewCreate, onReviewUpdate }) => {
+    const [selectedReview, setSelectedReview] = useState<PerformanceReview | null>(null);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+    const { teamReviews, myReviews, canCreate, employeesToReview } = useMemo(() => {
+        if (!loggedInUser.employee) return { teamReviews: [], myReviews: [], canCreate: false, employeesToReview: [] };
+        
+        const personalReviews = reviews.filter(r => r.employeeId === loggedInUser.employee?.id);
+
+        switch (loggedInUser.role) {
+            case 'Owner':
+                return { teamReviews: reviews, myReviews: personalReviews, canCreate: false, employeesToReview: [] };
+            case 'Supervisor':
+                const managedEmployees = employees.filter(e => e.id !== loggedInUser.employee?.id);
+                const managedEmployeeIds = new Set(managedEmployees.map(e => e.id));
+                const teamRevs = reviews.filter(r => managedEmployeeIds.has(r.employeeId));
+                return { teamReviews: teamRevs, myReviews: personalReviews, canCreate: true, employeesToReview: managedEmployees };
+            case 'Employee':
+                return { teamReviews: [], myReviews: personalReviews, canCreate: false, employeesToReview: [] };
+            default:
+                return { teamReviews: [], myReviews: [], canCreate: false, employeesToReview: [] };
+        }
+    }, [loggedInUser, reviews, employees]);
+
+    const getEmployeeName = (id: string) => employees.find(e => e.id === id)?.name || 'Unknown';
+    
+    return (
+        <div className="space-y-6 animate-fade-in">
+            <div className="flex justify-between items-center">
+                <h2 className="text-3xl font-bold text-white">Performance Reviews</h2>
+                {canCreate && <Button onClick={() => setIsCreateModalOpen(true)}>Create Review</Button>}
+            </div>
+            
+            {loggedInUser.role === 'Supervisor' && (
+                 <>
+                    <Card>
+                        <h3 className="text-xl font-semibold mb-4 text-white">My Team's Reviews</h3>
+                        <ReviewList reviews={teamReviews} employees={employees} onSelectReview={setSelectedReview} />
+                    </Card>
+                     <Card>
+                        <h3 className="text-xl font-semibold mb-4 text-white">My Personal Reviews</h3>
+                        {myReviews.length > 0 ? (
+                            <ReviewList reviews={myReviews} employees={employees} onSelectReview={setSelectedReview} />
+                        ) : <p className="text-gray-400">You have no performance reviews on record.</p>}
+                    </Card>
+                 </>
+            )}
+
+            {loggedInUser.role === 'Owner' && (
+                 <Card>
+                    <h3 className="text-xl font-semibold mb-4 text-white">All Company Reviews</h3>
+                    <ReviewList reviews={reviews} employees={employees} onSelectReview={setSelectedReview} />
+                 </Card>
+            )}
+            
+            {loggedInUser.role === 'Employee' && (
+                <Card>
+                     <h3 className="text-xl font-semibold mb-4 text-white">My Reviews</h3>
+                     {myReviews.length > 0 ? (
+                        <ReviewList reviews={myReviews} employees={employees} onSelectReview={setSelectedReview} />
+                     ) : <p className="text-gray-400">You have no performance reviews on record.</p>}
+                </Card>
+            )}
+
+            <CreateReviewModal 
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                employeesToReview={employeesToReview}
+                onCreate={onReviewCreate}
+            />
+
+            {selectedReview && (
+                <PerformanceReviewModal
+                    isOpen={!!selectedReview}
+                    onClose={() => setSelectedReview(null)}
+                    review={selectedReview}
+                    loggedInUser={loggedInUser}
+                    employeeName={getEmployeeName(selectedReview.employeeId)}
+                    onSave={onReviewUpdate}
+                />
+            )}
+        </div>
+    );
+};
+
+
+const ReviewList: FC<{reviews: PerformanceReview[], employees: Employee[], onSelectReview: (review: PerformanceReview) => void}> = ({reviews, employees, onSelectReview}) => {
+    const getEmployeeName = (id: string) => employees.find(e => e.id === id)?.name || 'Unknown';
+    const statusColors = { 'Draft': 'bg-gray-500', 'Pending Employee Acknowledgment': 'bg-yellow-500', 'Completed': 'bg-green-500' };
+
+    return (
+        <ul className="divide-y divide-gray-700">
+            {reviews.sort((a,b) => b.reviewDate.getTime() - a.reviewDate.getTime()).map(review => (
+                <li key={review.id} className="py-4 flex justify-between items-center">
+                    <div>
+                        <p className="text-lg font-semibold text-white">{review.reviewPeriod}</p>
+                        <p className="text-sm text-gray-400">Employee: {getEmployeeName(review.employeeId)}</p>
+                        <p className="text-sm text-gray-400">Supervisor: {review.supervisorName}</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <span className={`px-2 py-1 text-xs font-semibold text-white rounded-full ${statusColors[review.status]}`}>{review.status}</span>
+                        <Button onClick={() => onSelectReview(review)} variant="secondary">View</Button>
+                    </div>
+                </li>
+            ))}
+             {reviews.length === 0 && <p className="text-center text-gray-500 py-4">No reviews to display.</p>}
+        </ul>
+    );
+};
+
+const PerformanceReviewModal: FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    review: PerformanceReview;
+    loggedInUser: { role: UserRole, employee?: Employee };
+    employeeName: string;
+    onSave: (review: PerformanceReview) => void;
+}> = ({ isOpen, onClose, review, loggedInUser, employeeName, onSave }) => {
+
+    const [editableReview, setEditableReview] = useState<PerformanceReview>(JSON.parse(JSON.stringify(review)));
+
+    useEffect(() => {
+        // Deep copy review to avoid direct state mutation
+        const freshReview = JSON.parse(JSON.stringify(review));
+        // Ensure dates are converted back to Date objects after JSON serialization
+        freshReview.reviewDate = new Date(freshReview.reviewDate);
+        if (freshReview.supervisorSignatureDate) freshReview.supervisorSignatureDate = new Date(freshReview.supervisorSignatureDate);
+        if (freshReview.employeeSignatureDate) freshReview.employeeSignatureDate = new Date(freshReview.employeeSignatureDate);
+        setEditableReview(freshReview);
+    }, [review, isOpen]);
+
+    const isSupervisor = loggedInUser.role === 'Supervisor';
+    const isEmployee = loggedInUser.role === 'Employee' && loggedInUser.employee?.id === review.employeeId;
+    
+    const canSupervisorEdit = isSupervisor && review.status === 'Draft';
+    const canEmployeeComment = isEmployee && review.status === 'Pending Employee Acknowledgment';
+
+    const handleItemChange = (section: 'competencies' | 'objectives', id: string, field: 'supervisorComments' | 'employeeComments' | 'rating', value: string) => {
+        setEditableReview(prev => {
+            const newReview = { ...prev };
+            const itemIndex = newReview[section].findIndex(item => item.id === id);
+            if (itemIndex > -1) {
+                (newReview[section][itemIndex] as any)[field] = value;
+            }
+            return newReview;
+        });
+    };
+    
+    const handleFieldChange = (field: keyof PerformanceReview, value: string) => {
+        setEditableReview(prev => ({...prev, [field]: value}));
+    };
+
+    const handleAction = (action: 'save' | 'submit' | 'acknowledge') => {
+        let updatedReview = { ...editableReview };
+        switch(action) {
+            case 'save':
+                // Supervisor saves draft
+                break;
+            case 'submit':
+                // Supervisor submits to employee
+                updatedReview.status = 'Pending Employee Acknowledgment';
+                updatedReview.supervisorSignatureDate = new Date();
+                break;
+            case 'acknowledge':
+                // Employee acknowledges
+                updatedReview.status = 'Completed';
+                updatedReview.employeeSignatureDate = new Date();
+                break;
+        }
+        onSave(updatedReview);
+        if (action !== 'save') {
+             onClose();
+        }
+    };
+
+    const ratingOptions: RatingScale[] = ['Needs Development', 'Meets Expectations', 'Exceeds Expectations'];
+    const ratingColors: {[key in RatingScale]: string} = {'Needs Development': 'bg-red-600', 'Meets Expectations': 'bg-blue-600', 'Exceeds Expectations': 'bg-green-600'};
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title={`Review for ${employeeName} - ${review.reviewPeriod}`} size="5xl">
+            <div className="space-y-6">
+                {/* Core Competencies Section */}
+                <Card>
+                     <h3 className="text-xl font-semibold mb-4 text-white">Core Competencies</h3>
+                     <div className="space-y-4">
+                        {editableReview.competencies.map(item => (
+                            <div key={item.id} className="p-4 bg-gray-700 rounded-lg">
+                                <h4 className="font-bold text-indigo-300">{item.title}</h4>
+                                <p className="text-sm text-gray-400 mb-2">{item.description}</p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                     <div>
+                                        <label className="text-sm font-semibold">Supervisor Rating & Comments</label>
+                                        <div className="flex gap-2 my-2">
+                                            {ratingOptions.map(r => (
+                                                <button key={r} disabled={!canSupervisorEdit} onClick={() => handleItemChange('competencies', item.id, 'rating', r)} className={`px-2 py-1 text-xs rounded ${item.rating === r ? ratingColors[r] : 'bg-gray-600'} ${canSupervisorEdit ? 'hover:opacity-80' : 'cursor-not-allowed'}`}>{r}</button>
+                                            ))}
+                                        </div>
+                                        <textarea value={item.supervisorComments} disabled={!canSupervisorEdit} onChange={(e) => handleItemChange('competencies', item.id, 'supervisorComments', e.target.value)} rows={3} className="w-full bg-gray-900 rounded p-2 text-sm disabled:bg-gray-800"></textarea>
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-semibold">Employee Comments</label>
+                                         <textarea value={item.employeeComments} disabled={!canEmployeeComment} onChange={(e) => handleItemChange('competencies', item.id, 'employeeComments', e.target.value)} rows={canEmployeeComment ? 4 : 3} className="w-full bg-gray-900 rounded p-2 text-sm mt-2 disabled:bg-gray-800"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                     </div>
+                </Card>
+                {/* Overall Comments */}
+                 <Card>
+                    <h3 className="text-xl font-semibold mb-4 text-white">Overall Summary</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-sm font-semibold">Supervisor's Overall Comments</label>
+                            <textarea value={editableReview.overallSupervisorComments} disabled={!canSupervisorEdit} onChange={(e) => handleFieldChange('overallSupervisorComments', e.target.value)} rows={4} className="w-full bg-gray-900 rounded p-2 text-sm mt-2 disabled:bg-gray-800"></textarea>
+                        </div>
+                        <div>
+                            <label className="text-sm font-semibold">Employee's Overall Comments</label>
+                            <textarea value={editableReview.overallEmployeeComments} disabled={!canEmployeeComment} onChange={(e) => handleFieldChange('overallEmployeeComments', e.target.value)} rows={4} className="w-full bg-gray-900 rounded p-2 text-sm mt-2 disabled:bg-gray-800"></textarea>
+                        </div>
+                    </div>
+                </Card>
+                {/* Signatures and Actions */}
+                <div className="flex justify-between items-end pt-4">
+                    <div className="text-sm space-y-2">
+                        <p>Supervisor Signature: {review.supervisorSignatureDate ? `Signed on ${formatDate(review.supervisorSignatureDate)}` : 'Not signed'}</p>
+                        <p>Employee Signature: {review.employeeSignatureDate ? `Signed on ${formatDate(review.employeeSignatureDate)}` : 'Not signed'}</p>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button onClick={onClose} variant="secondary">Close</Button>
+                        {canSupervisorEdit && <Button onClick={() => handleAction('save')}>Save Draft</Button>}
+                        {canSupervisorEdit && <Button onClick={() => handleAction('submit')}>Submit to Employee</Button>}
+                        {canEmployeeComment && <Button onClick={() => handleAction('acknowledge')}>Acknowledge & Sign</Button>}
+                    </div>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
+
+// --- MAIN APP COMPONENT ---
+const App: FC = () => {
+    const [user, setUser] = useState<{ role: UserRole, employee: Employee } | null>(null);
+    const [view, setView] = useState<ViewType>('Dashboard');
+
+    // Data States
     const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
     const [shifts, setShifts] = useState<Shift[]>(initialShifts);
     const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
     const [expenseCategories, setExpenseCategories] = useState<string[]>(initialExpenseCategories);
-    const [residents, setResidents] = useState<Resident[]>(initialResidents);
-    const [allowances, setAllowances] = useState<Allowance[]>(initialAllowances);
     const [forecasts, setForecasts] = useState<ExpenseForecast[]>(initialForecasts);
+    const [residents, setResidents] = useState<Resident[]>(initialResidents);
     const [rooms, setRooms] = useState<Room[]>(initialRooms);
     const [tenancies, setTenancies] = useState<Tenancy[]>(initialTenancies);
+    const [allowances, setAllowances] = useState<Allowance[]>(initialAllowances);
+    const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>(initialTimeOffRequests);
+    const [performanceReviews, setPerformanceReviews] = useState<PerformanceReview[]>(initialPerformanceReviews);
 
-    const [currentView, setCurrentView] = useState<ViewType>('Dashboard');
-    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+    const handleLogin = (email: string) => {
+        const employee = employees.find(e => e.email.toLowerCase() === email.toLowerCase());
+        if (!employee) return;
 
-    useEffect(() => {
-        if(userRole === 'Supervisor' && ['Dashboard', 'Capital Expenses', 'Salary Expenses', 'Revenue'].includes(currentView)) {
-            setCurrentView('Scheduler');
-        }
-    }, [userRole, currentView]);
-
-    // CRUD Functions
-    const addEmployee = (employee: Omit<Employee, 'id'>) => setEmployees(prev => [...prev, { ...employee, id: Date.now().toString() }]);
-    const updateEmployee = (updatedEmployee: Employee) => setEmployees(prev => prev.map(e => e.id === updatedEmployee.id ? updatedEmployee : e));
-    const deleteEmployee = (id: string) => {
-        setEmployees(prev => prev.filter(e => e.id !== id));
-        setShifts(prev => prev.filter(s => s.employeeId !== id));
-    };
-    
-    const addShift = (shift: Omit<Shift, 'id'>) => setShifts(prev => [...prev, { ...shift, id: Date.now().toString() }]);
-    const addShifts = (newShifts: Omit<Shift, 'id'>[]) => setShifts(prev => [...prev, ...newShifts.map(s => ({...s, id: `s_${Math.random()}`}))]);
-    const updateShift = (updatedShift: Shift) => setShifts(prev => prev.map(s => s.id === updatedShift.id ? updatedShift : s));
-    const deleteShift = (id: string) => setShifts(prev => prev.filter(s => s.id !== id));
-
-    const addExpense = (expense: Omit<Expense, 'id'>) => setExpenses(prev => [...prev, { ...expense, id: Date.now().toString() }]);
-    const updateExpense = (updatedExpense: Expense) => setExpenses(prev => prev.map(e => e.id === updatedExpense.id ? updatedExpense : e));
-    const deleteExpense = (id: string) => setExpenses(prev => prev.filter(e => e.id !== id));
-
-    const addExpenseCategory = (categoryName: string) => {
-        if (categoryName && !expenseCategories.find(c => c.toLowerCase() === categoryName.toLowerCase())) {
-            setExpenseCategories(prev => [...prev, categoryName].sort());
+        let role: UserRole;
+        // In a real app, role would be part of the employee object.
+        // Here, we derive it for simulation purposes.
+        if (employee.id === '1') { // Alice Johnson is Supervisor
+            role = 'Supervisor';
+        } else if (employee.id === '8') { // Hannah Montana is Owner
+            role = 'Owner';
         } else {
-            alert('Category already exists or is empty.');
+            role = 'Employee';
         }
+        setUser({ role, employee });
     };
     
-    const deleteExpenseCategory = (categoryName: string) => {
-        const isUsed = expenses.some(e => e.category === categoryName) || forecasts.some(f => f.category === categoryName);
-        if (isUsed) {
-            alert('Cannot delete category as it is currently in use in expenses or forecasts.');
+    const handleLogout = () => setUser(null);
+
+    // Handlers for data manipulation
+    const handleAdd = <T,>(setter: React.Dispatch<React.SetStateAction<T[]>>, data: Omit<T, 'id'>) => {
+        setter(prev => [...prev, { ...data, id: `id_${new Date().getTime()}` } as T]);
+    };
+    const handleUpdate = <T extends {id: string}>(setter: React.Dispatch<React.SetStateAction<T[]>>, updatedData: T) => {
+        setter(prev => prev.map(item => item.id === updatedData.id ? updatedData : item));
+    };
+    const handleDelete = <T extends {id: string}>(setter: React.Dispatch<React.SetStateAction<T[]>>, id: string) => {
+        setter(prev => prev.filter(item => item.id !== id));
+    };
+    const handleUpdateTimeOffRequest = (id: string, status: 'Approved' | 'Denied') => {
+        handleUpdate(setTimeOffRequests, { ...timeOffRequests.find(r => r.id === id)!, status });
+    };
+    const handleAddShifts = (newShifts: Omit<Shift, 'id'>[]) => {
+        const shiftsWithIds = newShifts.map((s, i) => ({ ...s, id: `s_${new Date().getTime() + i}` }));
+        setShifts(prev => [...prev, ...shiftsWithIds]);
+    };
+    const handleAddCategory = (name: string) => {
+        if (name && !expenseCategories.includes(name)) {
+            setExpenseCategories(prev => [...prev, name].sort());
+        }
+    };
+    const handleDeleteCategory = (name: string) => {
+        if(window.confirm(`Are you sure you want to delete the category "${name}"? This will not delete existing expenses with this category.`)) {
+            setExpenseCategories(prev => prev.filter(c => c !== name));
+        }
+    };
+    const handleCreateReview = (employeeId: string, period: 'Mid-Year' | 'End-of-Year', year: number) => {
+        const supervisor = user?.role === 'Supervisor' ? user.employee : employees.find(e => e.id === '1');
+        if (!supervisor) {
+            console.error("Could not identify a supervisor for the review.");
             return;
         }
-        if (window.confirm(`Are you sure you want to delete the category "${categoryName}"?`)) {
-            setExpenseCategories(prev => prev.filter(c => c !== categoryName));
-        }
+        const newReview: PerformanceReview = {
+            id: `pr_${new Date().getTime()}`,
+            employeeId,
+            supervisorName: supervisor.name,
+            reviewPeriod: `${period} ${year}`,
+            status: 'Draft',
+            reviewDate: new Date(),
+            competencies: createEmptyReviewItems(coreCompetencies),
+            objectives: [],
+            overallSupervisorComments: '',
+            overallEmployeeComments: '',
+            developmentPlan: '',
+            supervisorSignatureDate: null,
+            employeeSignatureDate: null,
+        };
+        setPerformanceReviews(prev => [...prev, newReview]);
     };
-
-    const addResident = (resident: Omit<Resident, 'id'>) => setResidents(prev => [...prev, { ...resident, id: Date.now().toString() }]);
-    const updateResident = (updatedResident: Resident) => setResidents(prev => prev.map(r => r.id === updatedResident.id ? updatedResident : r));
-    const deleteResident = (id: string) => {
-        setResidents(prev => prev.filter(r => r.id !== id));
-        setAllowances(prev => prev.filter(a => a.residentId !== id));
-        setTenancies(prev => prev.filter(t => t.residentId !== id));
+    const handleUpdateReview = (updatedReview: PerformanceReview) => {
+        setPerformanceReviews(prev => prev.map(r => r.id === updatedReview.id ? updatedReview : r));
     };
-
-    const addAllowance = (allowance: Omit<Allowance, 'id'>) => setAllowances(prev => [...prev, { ...allowance, id: Date.now().toString() }]);
-    const deleteAllowance = (id: string) => setAllowances(prev => prev.filter(a => a.id !== id));
     
-    const updateForecast = (forecast: ExpenseForecast) => {
-        setForecasts(prev => {
-            const existing = prev.find(f => f.id === forecast.id);
-            if (existing) {
-                return prev.map(f => f.id === forecast.id ? forecast : f);
-            }
-            return [...prev, forecast];
-        });
-    };
-
-    const updateRooms = (newRooms: Room[]) => {
-        setRooms(newRooms);
-        const roomIds = new Set(newRooms.map(r => r.id));
-        setTenancies(prev => prev.filter(t => roomIds.has(t.roomId)));
-    }
-    const addTenancy = (tenancy: Omit<Tenancy, 'id'>) => setTenancies(prev => [...prev, {...tenancy, id: Date.now().toString()}]);
-    const updateTenancy = (updatedTenancy: Tenancy) => setTenancies(prev => prev.map(t => t.id === updatedTenancy.id ? updatedTenancy : t));
-    
-    const handleExport = () => {
-        exportToExcel({
-            Employees: employees.map(e => ({...e, hireDate: formatDate(e.hireDate)})),
-            Shifts: shifts.map(s => ({...s, employeeName: employees.find(e => e.id === s.employeeId)?.name, start: s.start.toISOString(), end: s.end.toISOString()})),
-            Expenses: expenses.map(e => ({...e, date: formatDate(e.date)})),
-            Forecasts: forecasts,
-            Rooms: rooms,
-            Tenancies: tenancies.map(t => ({...t, residentName: residents.find(r => r.id === t.residentId)?.name, startDate: formatDate(t.startDate), endDate: t.endDate ? formatDate(t.endDate) : ''})),
-            Residents: residents,
-            Allowances: allowances.map(a => ({...a, residentName: residents.find(r => r.id === a.residentId)?.name, date: formatDate(a.date)}))
-        });
-        setIsExportModalOpen(false);
-    };
-
-
-    const NavButton: FC<{ view: ViewType, children: React.ReactNode }> = ({ view, children }) => {
-        const isActive = currentView === view;
-        return (
-            <button onClick={() => setCurrentView(view)} className={`px-4 py-2 rounded-md font-medium transition-colors ${isActive ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
-                {children}
-            </button>
-        );
-    };
-
-    const renderView = () => {
-        switch (currentView) {
-            case 'Dashboard':
-                return <FinancialDashboard tenancies={tenancies} shifts={shifts} expenses={expenses} employees={employees} allowances={allowances} />;
-            case 'Scheduler':
-                return <Scheduler employees={employees} shifts={shifts} onShiftsAdd={addShifts} onShiftAdd={addShift} onShiftUpdate={updateShift} onShiftDelete={deleteShift} />;
-            case 'Employees':
-                return <EmployeeManager employees={employees} onEmployeeAdd={addEmployee} onEmployeeUpdate={updateEmployee} onEmployeeDelete={deleteEmployee} />;
-            case 'Capital Expenses':
-                return <ExpenseManager expenses={expenses} forecasts={forecasts} expenseCategories={expenseCategories} onExpenseAdd={addExpense} onExpenseUpdate={updateExpense} onExpenseDelete={deleteExpense} onForecastUpdate={updateForecast} onCategoryAdd={addExpenseCategory} onCategoryDelete={deleteExpenseCategory} />;
-            case 'Salary Expenses':
-                return <SalaryExpenses shifts={shifts} employees={employees} />;
-            case 'Revenue':
-                 return <RevenueManager 
-                            residents={residents} 
-                            allowances={allowances} 
-                            rooms={rooms}
-                            tenancies={tenancies}
-                            onRoomUpdate={updateRooms}
-                            onTenancyAdd={addTenancy}
-                            onTenancyUpdate={updateTenancy}
-                            onResidentAdd={addResident} 
-                            onResidentUpdate={updateResident} 
-                            onResidentDelete={deleteResident} 
-                            onAllowanceAdd={addAllowance} 
-                            onAllowanceDelete={deleteAllowance} />;
+    // This MUST be defined before any potential early returns (like the login screen)
+    const navItems: { name: ViewType }[] = useMemo(() => {
+        if (!user) return [];
+        switch (user.role) {
+            case 'Owner':
+                return [{ name: 'Dashboard' }, { name: 'Scheduler' }, { name: 'Employees' }, { name: 'Capital Expenses' }, { name: 'Salary Expenses' }, { name: 'Revenue' }, { name: 'Performance Reviews' }];
+            case 'Supervisor':
+                return [{ name: 'Dashboard' }, { name: 'Scheduler' }, { name: 'Employees' }, { name: 'Performance Reviews' }];
+            case 'Employee':
+                return [{ name: 'My Portal' }, { name: 'Performance Reviews' }];
             default:
-                return null;
+                return [];
+        }
+    }, [user]);
+
+    useEffect(() => {
+        if (user?.role === 'Employee') {
+            setView('My Portal');
+        } else if (user) {
+            setView('Dashboard');
+        }
+    }, [user]);
+
+    const handleExport = () => {
+        const dataToExport = {
+            Employees: employees.map(e => ({...e, hireDate: formatDate(e.hireDate)})),
+            Shifts: shifts.map(s => ({...s, employeeName: employees.find(e => e.id === s.employeeId)?.name || 'Unknown', start: s.start.toISOString(), end: s.end.toISOString()})),
+            Expenses: expenses.map(e => ({...e, date: formatDate(e.date)})),
+            Tenancies: tenancies.map(t => ({...t, residentName: residents.find(r => r.id === t.residentId)?.name, roomNumber: rooms.find(r=>r.id===t.roomId)?.roomNumber, startDate: formatDate(t.startDate), endDate: t.endDate ? formatDate(t.endDate) : ''})),
+        };
+        exportToExcel(dataToExport, employees, performanceReviews);
+    };
+
+    if (!user) {
+        return <LoginScreen onLogin={handleLogin} employees={employees} />;
+    }
+    
+    const CurrentView = () => {
+        switch (view) {
+            case 'Dashboard': return <FinancialDashboard tenancies={tenancies} shifts={shifts} expenses={expenses} employees={employees} allowances={allowances} timeOffRequests={timeOffRequests} onUpdateTimeOffRequest={handleUpdateTimeOffRequest} />;
+            case 'Scheduler': return <Scheduler employees={employees} shifts={shifts} timeOffRequests={timeOffRequests} onShiftsAdd={handleAddShifts} onShiftUpdate={(s) => handleUpdate(setShifts, s)} onShiftAdd={(s) => handleAdd(setShifts, s)} onShiftDelete={(id) => handleDelete(setShifts, id)} />;
+            case 'Employees': return <EmployeeManager employees={employees} onEmployeeAdd={(e) => handleAdd(setEmployees, e)} onEmployeeUpdate={(e) => handleUpdate(setEmployees, e)} onEmployeeDelete={(id) => handleDelete(setEmployees, id)} />;
+            case 'Capital Expenses': return <ExpenseManager expenses={expenses} forecasts={forecasts} expenseCategories={expenseCategories} onExpenseAdd={(e) => handleAdd(setExpenses, e)} onExpenseUpdate={(e) => handleUpdate(setExpenses, e)} onExpenseDelete={(id) => handleDelete(setExpenses, id)} onForecastUpdate={(f) => handleUpdate(setForecasts, f)} onCategoryAdd={handleAddCategory} onCategoryDelete={handleDeleteCategory}/>;
+            case 'Salary Expenses': return <SalaryExpenses shifts={shifts} employees={employees} />;
+            case 'Revenue': return <RevenueManager residents={residents} rooms={rooms} tenancies={tenancies} onTenancyUpdate={t => handleUpdate(setTenancies, t)} onTenancyAdd={t => handleAdd(setTenancies, t)} />;
+            case 'My Portal': return <MyPortal loggedInEmployee={user.employee!} shifts={shifts} timeOffRequests={timeOffRequests} onTimeOffRequestAdd={(r) => handleAdd(setTimeOffRequests, {...r, status: 'Pending'})} />;
+            case 'Performance Reviews': return <PerformanceReviews loggedInUser={user} reviews={performanceReviews} employees={employees} onReviewCreate={handleCreateReview} onReviewUpdate={handleUpdateReview} />;
+            default: return <h1 className="text-white">Not Implemented</h1>;
         }
     };
     
-    if (!userRole) {
-        return <LoginScreen onLogin={setUserRole} />;
-    }
-
     return (
-        <div className="min-h-screen text-gray-100 font-sans flex flex-col">
-            <header className="bg-gray-800 shadow-md sticky top-0 z-40">
-                <nav className="container mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center py-2">
-                     <div className="flex items-center">
-                        <img src={LOGO_BASE64} alt="TJM Technologies Logo" className="h-16 w-auto rounded-md" style={{ filter: 'invert(1)' }} />
-                        <span className="text-xl font-normal text-gray-400 mx-3">|</span>
-                        <span className="font-semibold text-white text-lg">CareHome Business Suite</span>
+        <div className="flex h-screen bg-gray-900 text-gray-100">
+            <aside className="w-64 bg-gray-800 p-6 flex flex-col justify-between">
+                <div>
+                    <div className="flex items-center gap-3 mb-8">
+                        <img src={LOGO_BASE64} alt="Logo" className="h-10 w-10 rounded-lg" style={{ filter: 'invert(1)' }} />
+                        <span className="text-xl font-bold">TJM Suite</span>
                     </div>
-                    <div className="flex items-center space-x-2">
-                        {userRole === 'Owner' && <NavButton view="Dashboard">Dashboard</NavButton>}
-                        <NavButton view="Scheduler">Scheduler</NavButton>
-                        <NavButton view="Employees">Employees</NavButton>
-                        {userRole === 'Owner' && <NavButton view="Capital Expenses">Capital Expenses</NavButton>}
-                        {userRole === 'Owner' && <NavButton view="Salary Expenses">Salary Expenses</NavButton>}
-                        {userRole === 'Owner' && <NavButton view="Revenue">Revenue</NavButton>}
-                        <Button onClick={() => setIsExportModalOpen(true)} variant="secondary">Export</Button>
-                    </div>
-                </nav>
-            </header>
-            <main className="container mx-auto p-4 sm:p-6 lg:p-8 flex-grow">
-                {renderView()}
-            </main>
-            <footer className="text-center py-4 bg-gray-800 text-gray-500 text-sm border-t border-gray-700">
-                &copy; {new Date().getFullYear()} TJM Technologies. All rights reserved.
-            </footer>
-             <Modal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} title="Export Data to Excel">
-                <div className="space-y-4">
-                    <p>This will export all current data into an Excel file with multiple sheets.</p>
-                    <ul className="list-disc list-inside text-gray-300">
-                        <li>Employees, Shifts, Expenses, Forecasts</li>
-                        <li>Rooms, Tenancies, Residents, Allowances</li>
-                    </ul>
-                     <div className="flex justify-end gap-2 pt-4">
-                        <Button onClick={() => setIsExportModalOpen(false)} variant="secondary">Cancel</Button>
-                        <Button onClick={handleExport}>Export Data</Button>
+                    <nav className="space-y-2">
+                        {navItems.map(({ name }) => (
+                            <button
+                                key={name}
+                                onClick={() => setView(name)}
+                                className={`w-full text-left px-4 py-2 rounded-md text-lg transition-colors ${view === name ? 'bg-indigo-600 text-white' : 'hover:bg-gray-700'}`}
+                            >
+                                {name}
+                            </button>
+                        ))}
+                    </nav>
+                </div>
+                 <div>
+                    <Button onClick={handleExport} variant="secondary" className="w-full mb-4">Export All Data</Button>
+                    <div className="text-sm text-gray-400 border-t border-gray-700 pt-4">
+                        <p>Logged in as: <span className="font-semibold text-indigo-300">{user.employee?.name || user.role}</span></p>
+                        <button onClick={handleLogout} className="w-full text-left mt-2 font-bold text-red-600 hover:text-red-500">Logout</button>
                     </div>
                 </div>
-            </Modal>
+            </aside>
+            <main className="flex-1 p-8 overflow-y-auto">
+                <CurrentView />
+            </main>
         </div>
     );
 };
