@@ -1,5 +1,5 @@
-
 import React, { useState } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const NavLink: React.FC<{ href: string; children: React.ReactNode; onClick: (e: React.MouseEvent<HTMLAnchorElement>) => void }> = ({ href, children, onClick }) => (
   <a
@@ -13,13 +13,14 @@ const NavLink: React.FC<{ href: string; children: React.ReactNode; onClick: (e: 
 
 const Header: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const { language, setLanguage, t } = useLanguage();
 
   const navLinks = [
-    { href: '#services', label: 'Services' },
-    { href: '#about', label: 'About' },
-    { href: '#process', label: 'Process' },
-    { href: '#demos', label: 'Demos' },
-    { href: '#contact', label: 'Contact' },
+    { href: '#services', label: t.navServices },
+    { href: '#about', label: t.navAbout },
+    { href: '#process', label: t.navProcess },
+    { href: '#demos', label: t.navDemos },
+    { href: '#contact', label: t.navContact },
   ];
 
   const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -42,10 +43,27 @@ const Header: React.FC = () => {
     <header className="bg-primary/80 backdrop-blur-sm sticky top-0 z-50 shadow-lg shadow-black/20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 flex items-center gap-4">
              <a href="#home" onClick={handleLinkClick} className="text-white text-xl font-bold">
               TJM <span className="text-accent">Technologies</span>
             </a>
+            <div className="text-sm text-gray-400 border-l border-gray-600 pl-4">
+              <button 
+                onClick={() => setLanguage('en')}
+                className={`font-semibold transition-colors ${language === 'en' ? 'text-white' : 'hover:text-white'}`}
+                aria-pressed={language === 'en'}
+              >
+                EN
+              </button>
+              <span className="mx-1">/</span>
+              <button 
+                onClick={() => setLanguage('fr')}
+                className={`font-semibold transition-colors ${language === 'fr' ? 'text-white' : 'hover:text-white'}`}
+                aria-pressed={language === 'fr'}
+              >
+                FR
+              </button>
+            </div>
           </div>
           <div className="hidden md:block">
             <div className="ml-10 flex items-baseline space-x-4">
@@ -60,7 +78,7 @@ const Header: React.FC = () => {
               type="button"
               className="bg-secondary inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-primary focus:ring-white"
               aria-controls="mobile-menu"
-              aria-expanded="false"
+              aria-expanded={isOpen}
             >
               <span className="sr-only">Open main menu</span>
               {!isOpen ? (
@@ -81,7 +99,7 @@ const Header: React.FC = () => {
         <div className="md:hidden" id="mobile-menu">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
              {navLinks.map((link) => (
-                <NavLink key={link.href} href={link.href} onClick={handleLinkClick}>{link.label}</NavLink>
+                <a key={link.href} href={link.href} onClick={handleLinkClick} className="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-secondary">{link.label}</a>
               ))}
           </div>
         </div>
