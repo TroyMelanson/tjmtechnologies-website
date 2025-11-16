@@ -1711,6 +1711,7 @@ const MyPortal: FC<{
             .sort((a, b) => a.start.getTime() - b.start.getTime())
             .slice(0, 5); // Show next 5 shifts
     }, [shifts, loggedInEmployee]);
+<<<<<<< HEAD
     
     const myRequests = useMemo(() => {
         return timeOffRequests
@@ -1758,6 +1759,588 @@ const MyPortal: FC<{
                     </Card>
                 </div>
              </div>
+=======
+    
+    const myRequests = useMemo(() => {
+        return timeOffRequests
+            .filter(r => r.employeeId === loggedInEmployee.id)
+            .sort((a,b) => b.startDate.getTime() - a.startDate.getTime());
+    }, [timeOffRequests, loggedInEmployee]);
+    
+    return (
+        <div className="space-y-6 animate-fade-in">
+             <h2 className="text-3xl font-bold text-white">Welcome, {loggedInEmployee.name}</h2>
+             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                    <h3 className="text-xl font-semibold mb-4">My Upcoming Shifts</h3>
+                    {myShifts.length > 0 ? (
+                        <ul className="divide-y divide-gray-700">
+                            {myShifts.map(shift => (
+                                <li key={shift.id} className="py-3">
+                                    <p className="font-semibold">{shift.start.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
+                                    <p className="text-gray-300">{formatTime(shift.start)} - {formatTime(shift.end)}</p>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : <p className="text-gray-400">No upcoming shifts scheduled.</p>}
+                </Card>
+                <div className="space-y-6">
+                    <Card>
+                        <h3 className="text-xl font-semibold mb-4">Request Time Off</h3>
+                        <TimeOffRequestForm employeeId={loggedInEmployee.id} onSubmit={onTimeOffRequestAdd} />
+                    </Card>
+                     <Card>
+                        <h3 className="text-xl font-semibold mb-4">My Requests</h3>
+                        <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
+                             {myRequests.length > 0 ? myRequests.map(req => {
+                                const statusColors = { Pending: 'text-yellow-400', Approved: 'text-green-400', Denied: 'text-red-400' };
+                                return (
+                                <div key={req.id} className="p-3 bg-gray-700 rounded">
+                                    <div className="flex justify-between items-center">
+                                        <p className="font-semibold">{formatDate(req.startDate)} to {formatDate(req.endDate)}</p>
+                                        <p className={`font-bold text-sm ${statusColors[req.status]}`}>{req.status}</p>
+                                    </div>
+                                    <p className="text-sm text-gray-400 italic">"{req.reason}"</p>
+                                </div>
+                             )}) : <p className="text-gray-400">No time off requests found.</p>}
+                        </div>
+                    </Card>
+                </div>
+             </div>
+        </div>
+    );
+};
+
+const TimeOffRequestForm: FC<{employeeId: string, onSubmit: (req: Omit<TimeOffRequest, 'id' | 'status'>) => void}> = ({ employeeId, onSubmit }) => {
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [reason, setReason] = useState('');
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!startDate || !endDate) {
+            alert('Please select a start and end date.');
+            return;
+        }
+        onSubmit({
+            employeeId,
+            startDate: new Date(startDate + 'T00:00:00'),
+            endDate: new Date(endDate + 'T00:00:00'),
+            reason
+        });
+        setStartDate('');
+        setEndDate('');
+        setReason('');
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+                 <div>
+                    <label className="block text-sm font-medium text-gray-300">Start Date</label>
+                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
+                </div>
+                 <div>
+                    <label className="block text-sm font-medium text-gray-300">End Date</label>
+                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
+                </div>
+            </div>
+            <div>
+                <label className="block text-sm font-medium text-gray-300">Reason (optional)</label>
+                <input type="text" value={reason} onChange={e => setReason(e.target.value)} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white" />
+            </div>
+            <div className="text-right">
+                <Button type="submit">Submit Request</Button>
+            </div>
+        </form>
+    );
+};
+
+// --- PERFORMANCE REVIEWS ---
+const CreateReviewModal: FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    employeesToReview: Employee[];
+    onCreate: (employeeId: string, period: 'Mid-Year' | 'End-of-Year', year: number) => void;
+}> = ({ isOpen, onClose, employeesToReview, onCreate }) => {
+    const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
+    const [year, setYear] = useState(new Date().getFullYear());
+    const [period, setPeriod] = useState<'Mid-Year' | 'End-of-Year'>('Mid-Year');
+    
+    const availableYears = useMemo(() => {
+        const currentYear = new Date().getFullYear();
+        return [currentYear + 1, currentYear, currentYear - 1];
+    }, []);
+
+    useEffect(() => {
+        if (employeesToReview.length > 0) {
+            setSelectedEmployeeId(employeesToReview[0].id);
+        }
+    }, [employeesToReview, isOpen]);
+
+    const handleCreate = () => {
+        if (selectedEmployeeId) {
+            onCreate(selectedEmployeeId, period, year);
+            onClose();
+        } else {
+            alert('Please select an employee.');
+        }
+    };
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Create New Performance Review">
+            <div className="space-y-4">
+                 <div>
+                    <label className="block text-sm font-medium text-gray-300">Employee</label>
+                    <select value={selectedEmployeeId} onChange={e => setSelectedEmployeeId(e.target.value)} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white">
+                        {employeesToReview.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                    </select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300">Review Period</label>
+                         <select value={period} onChange={e => setPeriod(e.target.value as 'Mid-Year' | 'End-of-Year')} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white">
+                            <option value="Mid-Year">Mid-Year</option>
+                            <option value="End-of-Year">End-of-Year</option>
+                        </select>
+                    </div>
+                     <div>
+                        <label className="block text-sm font-medium text-gray-300">Year</label>
+                         <select value={year} onChange={e => setYear(parseInt(e.target.value))} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2 text-white">
+                            {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+                        </select>
+                    </div>
+                </div>
+                <div className="flex justify-end gap-2 pt-4">
+                    <Button onClick={onClose} variant="secondary">Cancel</Button>
+                    <Button onClick={handleCreate}>Create Review</Button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
+const PerformanceReviews: FC<{
+    loggedInUser: { role: UserRole, employee?: Employee };
+    reviews: PerformanceReview[];
+    employees: Employee[];
+    onReviewCreate: (employeeId: string, period: 'Mid-Year' | 'End-of-Year', year: number) => void;
+    onReviewUpdate: (review: PerformanceReview) => void;
+}> = ({ loggedInUser, reviews, employees, onReviewCreate, onReviewUpdate }) => {
+    const [selectedReview, setSelectedReview] = useState<PerformanceReview | null>(null);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+    const { teamReviews, myReviews, canCreate, employeesToReview } = useMemo(() => {
+        if (!loggedInUser.employee) return { teamReviews: [], myReviews: [], canCreate: false, employeesToReview: [] };
+        
+        const personalReviews = reviews.filter(r => r.employeeId === loggedInUser.employee?.id);
+
+        switch (loggedInUser.role) {
+            case 'Owner':
+                return { teamReviews: reviews, myReviews: personalReviews, canCreate: false, employeesToReview: [] };
+            case 'Supervisor':
+                const managedEmployees = employees.filter(e => e.id !== loggedInUser.employee?.id);
+                const managedEmployeeIds = new Set(managedEmployees.map(e => e.id));
+                const teamRevs = reviews.filter(r => managedEmployeeIds.has(r.employeeId));
+                return { teamReviews: teamRevs, myReviews: personalReviews, canCreate: true, employeesToReview: managedEmployees };
+            case 'Employee':
+                return { teamReviews: [], myReviews: personalReviews, canCreate: false, employeesToReview: [] };
+            default:
+                return { teamReviews: [], myReviews: [], canCreate: false, employeesToReview: [] };
+        }
+    }, [loggedInUser, reviews, employees]);
+
+    const getEmployeeName = (id: string) => employees.find(e => e.id === id)?.name || 'Unknown';
+    
+    return (
+        <div className="space-y-6 animate-fade-in">
+            <div className="flex justify-between items-center">
+                <h2 className="text-3xl font-bold text-white">Performance Reviews</h2>
+                {canCreate && <Button onClick={() => setIsCreateModalOpen(true)}>Create Review</Button>}
+            </div>
+            
+            {loggedInUser.role === 'Supervisor' && (
+                 <>
+                    <Card>
+                        <h3 className="text-xl font-semibold mb-4 text-white">My Team's Reviews</h3>
+                        <ReviewList reviews={teamReviews} employees={employees} onSelectReview={setSelectedReview} />
+                    </Card>
+                     <Card>
+                        <h3 className="text-xl font-semibold mb-4 text-white">My Personal Reviews</h3>
+                        {myReviews.length > 0 ? (
+                            <ReviewList reviews={myReviews} employees={employees} onSelectReview={setSelectedReview} />
+                        ) : <p className="text-gray-400">You have no performance reviews on record.</p>}
+                    </Card>
+                 </>
+            )}
+
+            {loggedInUser.role === 'Owner' && (
+                 <Card>
+                    <h3 className="text-xl font-semibold mb-4 text-white">All Company Reviews</h3>
+                    <ReviewList reviews={reviews} employees={employees} onSelectReview={setSelectedReview} />
+                 </Card>
+            )}
+            
+            {loggedInUser.role === 'Employee' && (
+                <Card>
+                     <h3 className="text-xl font-semibold mb-4 text-white">My Reviews</h3>
+                     {myReviews.length > 0 ? (
+                        <ReviewList reviews={myReviews} employees={employees} onSelectReview={setSelectedReview} />
+                     ) : <p className="text-gray-400">You have no performance reviews on record.</p>}
+                </Card>
+            )}
+
+            <CreateReviewModal 
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                employeesToReview={employeesToReview}
+                onCreate={onReviewCreate}
+            />
+
+            {selectedReview && (
+                <PerformanceReviewModal
+                    isOpen={!!selectedReview}
+                    onClose={() => setSelectedReview(null)}
+                    review={selectedReview}
+                    loggedInUser={loggedInUser}
+                    employeeName={getEmployeeName(selectedReview.employeeId)}
+                    onSave={onReviewUpdate}
+                />
+            )}
+        </div>
+    );
+};
+
+
+const ReviewList: FC<{reviews: PerformanceReview[], employees: Employee[], onSelectReview: (review: PerformanceReview) => void}> = ({reviews, employees, onSelectReview}) => {
+    const getEmployeeName = (id: string) => employees.find(e => e.id === id)?.name || 'Unknown';
+    const statusColors = { 'Draft': 'bg-gray-500', 'Pending Employee Acknowledgment': 'bg-yellow-500', 'Completed': 'bg-green-500' };
+
+    return (
+        <ul className="divide-y divide-gray-700">
+            {reviews.sort((a,b) => b.reviewDate.getTime() - a.reviewDate.getTime()).map(review => (
+                <li key={review.id} className="py-4 flex justify-between items-center">
+                    <div>
+                        <p className="text-lg font-semibold text-white">{review.reviewPeriod}</p>
+                        <p className="text-sm text-gray-400">Employee: {getEmployeeName(review.employeeId)}</p>
+                        <p className="text-sm text-gray-400">Supervisor: {review.supervisorName}</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <span className={`px-2 py-1 text-xs font-semibold text-white rounded-full ${statusColors[review.status]}`}>{review.status}</span>
+                        <Button onClick={() => onSelectReview(review)} variant="secondary">View</Button>
+                    </div>
+                </li>
+            ))}
+             {reviews.length === 0 && <p className="text-center text-gray-500 py-4">No reviews to display.</p>}
+        </ul>
+    );
+};
+
+const PerformanceReviewModal: FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    review: PerformanceReview;
+    loggedInUser: { role: UserRole, employee?: Employee };
+    employeeName: string;
+    onSave: (review: PerformanceReview) => void;
+}> = ({ isOpen, onClose, review, loggedInUser, employeeName, onSave }) => {
+
+    const [editableReview, setEditableReview] = useState<PerformanceReview>(JSON.parse(JSON.stringify(review)));
+
+    useEffect(() => {
+        // Deep copy review to avoid direct state mutation
+        const freshReview = JSON.parse(JSON.stringify(review));
+        // Ensure dates are converted back to Date objects after JSON serialization
+        freshReview.reviewDate = new Date(freshReview.reviewDate);
+        if (freshReview.supervisorSignatureDate) freshReview.supervisorSignatureDate = new Date(freshReview.supervisorSignatureDate);
+        if (freshReview.employeeSignatureDate) freshReview.employeeSignatureDate = new Date(freshReview.employeeSignatureDate);
+        setEditableReview(freshReview);
+    }, [review, isOpen]);
+
+    const isSupervisor = loggedInUser.role === 'Supervisor';
+    const isEmployee = loggedInUser.role === 'Employee' && loggedInUser.employee?.id === review.employeeId;
+    
+    const canSupervisorEdit = isSupervisor && review.status === 'Draft';
+    const canEmployeeComment = isEmployee && review.status === 'Pending Employee Acknowledgment';
+
+    const handleItemChange = (section: 'competencies' | 'objectives', id: string, field: 'supervisorComments' | 'employeeComments' | 'rating', value: string) => {
+        setEditableReview(prev => {
+            const newReview = { ...prev };
+            const itemIndex = newReview[section].findIndex(item => item.id === id);
+            if (itemIndex > -1) {
+                (newReview[section][itemIndex] as any)[field] = value;
+            }
+            return newReview;
+        });
+    };
+    
+    const handleFieldChange = (field: keyof PerformanceReview, value: string) => {
+        setEditableReview(prev => ({...prev, [field]: value}));
+    };
+
+    const handleAction = (action: 'save' | 'submit' | 'acknowledge') => {
+        let updatedReview = { ...editableReview };
+        switch(action) {
+            case 'save':
+                // Supervisor saves draft
+                break;
+            case 'submit':
+                // Supervisor submits to employee
+                updatedReview.status = 'Pending Employee Acknowledgment';
+                updatedReview.supervisorSignatureDate = new Date();
+                break;
+            case 'acknowledge':
+                // Employee acknowledges
+                updatedReview.status = 'Completed';
+                updatedReview.employeeSignatureDate = new Date();
+                break;
+        }
+        onSave(updatedReview);
+        if (action !== 'save') {
+             onClose();
+        }
+    };
+
+    const ratingOptions: RatingScale[] = ['Needs Development', 'Meets Expectations', 'Exceeds Expectations'];
+    const ratingColors: {[key in RatingScale]: string} = {'Needs Development': 'bg-red-600', 'Meets Expectations': 'bg-blue-600', 'Exceeds Expectations': 'bg-green-600'};
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title={`Review for ${employeeName} - ${review.reviewPeriod}`} size="5xl">
+            <div className="space-y-6">
+                {/* Core Competencies Section */}
+                <Card>
+                     <h3 className="text-xl font-semibold mb-4 text-white">Core Competencies</h3>
+                     <div className="space-y-4">
+                        {editableReview.competencies.map(item => (
+                            <div key={item.id} className="p-4 bg-gray-700 rounded-lg">
+                                <h4 className="font-bold text-indigo-300">{item.title}</h4>
+                                <p className="text-sm text-gray-400 mb-2">{item.description}</p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                     <div>
+                                        <label className="text-sm font-semibold">Supervisor Rating & Comments</label>
+                                        <div className="flex gap-2 my-2">
+                                            {ratingOptions.map(r => (
+                                                <button key={r} disabled={!canSupervisorEdit} onClick={() => handleItemChange('competencies', item.id, 'rating', r)} className={`px-2 py-1 text-xs rounded ${item.rating === r ? ratingColors[r] : 'bg-gray-600'} ${canSupervisorEdit ? 'hover:opacity-80' : 'cursor-not-allowed'}`}>{r}</button>
+                                            ))}
+                                        </div>
+                                        <textarea value={item.supervisorComments} disabled={!canSupervisorEdit} onChange={(e) => handleItemChange('competencies', item.id, 'supervisorComments', e.target.value)} rows={3} className="w-full bg-gray-900 rounded p-2 text-sm disabled:bg-gray-800"></textarea>
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-semibold">Employee Comments</label>
+                                         <textarea value={item.employeeComments} disabled={!canEmployeeComment} onChange={(e) => handleItemChange('competencies', item.id, 'employeeComments', e.target.value)} rows={canEmployeeComment ? 4 : 3} className="w-full bg-gray-900 rounded p-2 text-sm mt-2 disabled:bg-gray-800"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                     </div>
+                </Card>
+                {/* Overall Comments */}
+                 <Card>
+                    <h3 className="text-xl font-semibold mb-4 text-white">Overall Summary</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-sm font-semibold">Supervisor's Overall Comments</label>
+                            <textarea value={editableReview.overallSupervisorComments} disabled={!canSupervisorEdit} onChange={(e) => handleFieldChange('overallSupervisorComments', e.target.value)} rows={4} className="w-full bg-gray-900 rounded p-2 text-sm mt-2 disabled:bg-gray-800"></textarea>
+                        </div>
+                        <div>
+                            <label className="text-sm font-semibold">Employee's Overall Comments</label>
+                            <textarea value={editableReview.overallEmployeeComments} disabled={!canEmployeeComment} onChange={(e) => handleFieldChange('overallEmployeeComments', e.target.value)} rows={4} className="w-full bg-gray-900 rounded p-2 text-sm mt-2 disabled:bg-gray-800"></textarea>
+                        </div>
+                    </div>
+                </Card>
+                {/* Signatures and Actions */}
+                <div className="flex justify-between items-end pt-4">
+                    <div className="text-sm space-y-2">
+                        <p>Supervisor Signature: {review.supervisorSignatureDate ? `Signed on ${formatDate(review.supervisorSignatureDate)}` : 'Not signed'}</p>
+                        <p>Employee Signature: {review.employeeSignatureDate ? `Signed on ${formatDate(review.employeeSignatureDate)}` : 'Not signed'}</p>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button onClick={onClose} variant="secondary">Close</Button>
+                        {canSupervisorEdit && <Button onClick={() => handleAction('save')}>Save Draft</Button>}
+                        {canSupervisorEdit && <Button onClick={() => handleAction('submit')}>Submit to Employee</Button>}
+                        {canEmployeeComment && <Button onClick={() => handleAction('acknowledge')}>Acknowledge & Sign</Button>}
+                    </div>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
+
+// --- MAIN APP COMPONENT ---
+const App: FC = () => {
+    const [user, setUser] = useState<{ role: UserRole, employee: Employee } | null>(null);
+    const [view, setView] = useState<ViewType>('Dashboard');
+
+    // Data States
+    const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
+    const [shifts, setShifts] = useState<Shift[]>(initialShifts);
+    const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
+    const [expenseCategories, setExpenseCategories] = useState<string[]>(initialExpenseCategories);
+    const [forecasts, setForecasts] = useState<ExpenseForecast[]>(initialForecasts);
+    const [residents, setResidents] = useState<Resident[]>(initialResidents);
+    const [rooms, setRooms] = useState<Room[]>(initialRooms);
+    const [tenancies, setTenancies] = useState<Tenancy[]>(initialTenancies);
+    const [allowances, setAllowances] = useState<Allowance[]>(initialAllowances);
+    const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>(initialTimeOffRequests);
+    const [performanceReviews, setPerformanceReviews] = useState<PerformanceReview[]>(initialPerformanceReviews);
+
+    const handleLogin = (email: string) => {
+        const employee = employees.find(e => e.email.toLowerCase() === email.toLowerCase());
+        if (!employee) return;
+
+        let role: UserRole;
+        // In a real app, role would be part of the employee object.
+        // Here, we derive it for simulation purposes.
+        if (employee.id === '1') { // Alice Johnson is Supervisor
+            role = 'Supervisor';
+        } else if (employee.id === '8') { // Hannah Montana is Owner
+            role = 'Owner';
+        } else {
+            role = 'Employee';
+        }
+        setUser({ role, employee });
+    };
+    
+    const handleLogout = () => setUser(null);
+
+    // Handlers for data manipulation
+    const handleAdd = <T,>(setter: React.Dispatch<React.SetStateAction<T[]>>, data: Omit<T, 'id'>) => {
+        setter(prev => [...prev, { ...data, id: `id_${new Date().getTime()}` } as T]);
+    };
+    const handleUpdate = <T extends {id: string}>(setter: React.Dispatch<React.SetStateAction<T[]>>, updatedData: T) => {
+        setter(prev => prev.map(item => item.id === updatedData.id ? updatedData : item));
+    };
+    const handleDelete = <T extends {id: string}>(setter: React.Dispatch<React.SetStateAction<T[]>>, id: string) => {
+        setter(prev => prev.filter(item => item.id !== id));
+    };
+    const handleUpdateTimeOffRequest = (id: string, status: 'Approved' | 'Denied') => {
+        handleUpdate(setTimeOffRequests, { ...timeOffRequests.find(r => r.id === id)!, status });
+    };
+    const handleAddShifts = (newShifts: Omit<Shift, 'id'>[]) => {
+        const shiftsWithIds = newShifts.map((s, i) => ({ ...s, id: `s_${new Date().getTime() + i}` }));
+        setShifts(prev => [...prev, ...shiftsWithIds]);
+    };
+    const handleAddCategory = (name: string) => {
+        if (name && !expenseCategories.includes(name)) {
+            setExpenseCategories(prev => [...prev, name].sort());
+        }
+    };
+    const handleDeleteCategory = (name: string) => {
+        if(window.confirm(`Are you sure you want to delete the category "${name}"? This will not delete existing expenses with this category.`)) {
+            setExpenseCategories(prev => prev.filter(c => c !== name));
+        }
+    };
+    const handleCreateReview = (employeeId: string, period: 'Mid-Year' | 'End-of-Year', year: number) => {
+        const supervisor = user?.role === 'Supervisor' ? user.employee : employees.find(e => e.id === '1');
+        if (!supervisor) {
+            console.error("Could not identify a supervisor for the review.");
+            return;
+        }
+        const newReview: PerformanceReview = {
+            id: `pr_${new Date().getTime()}`,
+            employeeId,
+            supervisorName: supervisor.name,
+            reviewPeriod: `${period} ${year}`,
+            status: 'Draft',
+            reviewDate: new Date(),
+            competencies: createEmptyReviewItems(coreCompetencies),
+            objectives: [],
+            overallSupervisorComments: '',
+            overallEmployeeComments: '',
+            developmentPlan: '',
+            supervisorSignatureDate: null,
+            employeeSignatureDate: null,
+        };
+        setPerformanceReviews(prev => [...prev, newReview]);
+    };
+    const handleUpdateReview = (updatedReview: PerformanceReview) => {
+        setPerformanceReviews(prev => prev.map(r => r.id === updatedReview.id ? updatedReview : r));
+    };
+    
+    // This MUST be defined before any potential early returns (like the login screen)
+    const navItems: { name: ViewType }[] = useMemo(() => {
+        if (!user) return [];
+        switch (user.role) {
+            case 'Owner':
+                return [{ name: 'Dashboard' }, { name: 'Scheduler' }, { name: 'Employees' }, { name: 'Capital Expenses' }, { name: 'Salary Expenses' }, { name: 'Revenue' }, { name: 'Performance Reviews' }];
+            case 'Supervisor':
+                return [{ name: 'Dashboard' }, { name: 'Scheduler' }, { name: 'Employees' }, { name: 'Performance Reviews' }];
+            case 'Employee':
+                return [{ name: 'My Portal' }, { name: 'Performance Reviews' }];
+            default:
+                return [];
+        }
+    }, [user]);
+
+    useEffect(() => {
+        if (user?.role === 'Employee') {
+            setView('My Portal');
+        } else if (user) {
+            setView('Dashboard');
+        }
+    }, [user]);
+
+    const handleExport = () => {
+        const dataToExport = {
+            Employees: employees.map(e => ({...e, hireDate: formatDate(e.hireDate)})),
+            Shifts: shifts.map(s => ({...s, employeeName: employees.find(e => e.id === s.employeeId)?.name || 'Unknown', start: s.start.toISOString(), end: s.end.toISOString()})),
+            Expenses: expenses.map(e => ({...e, date: formatDate(e.date)})),
+            Tenancies: tenancies.map(t => ({...t, residentName: residents.find(r => r.id === t.residentId)?.name, roomNumber: rooms.find(r=>r.id===t.roomId)?.roomNumber, startDate: formatDate(t.startDate), endDate: t.endDate ? formatDate(t.endDate) : ''})),
+        };
+        exportToExcel(dataToExport, employees, performanceReviews);
+    };
+
+    if (!user) {
+        return <LoginScreen onLogin={handleLogin} employees={employees} />;
+    }
+    
+    const CurrentView = () => {
+        switch (view) {
+            case 'Dashboard': return <FinancialDashboard tenancies={tenancies} shifts={shifts} expenses={expenses} employees={employees} allowances={allowances} timeOffRequests={timeOffRequests} onUpdateTimeOffRequest={handleUpdateTimeOffRequest} />;
+            case 'Scheduler': return <Scheduler employees={employees} shifts={shifts} timeOffRequests={timeOffRequests} onShiftsAdd={handleAddShifts} onShiftUpdate={(s) => handleUpdate(setShifts, s)} onShiftAdd={(s) => handleAdd(setShifts, s)} onShiftDelete={(id) => handleDelete(setShifts, id)} />;
+            case 'Employees': return <EmployeeManager employees={employees} onEmployeeAdd={(e) => handleAdd(setEmployees, e)} onEmployeeUpdate={(e) => handleUpdate(setEmployees, e)} onEmployeeDelete={(id) => handleDelete(setEmployees, id)} />;
+            case 'Capital Expenses': return <ExpenseManager expenses={expenses} forecasts={forecasts} expenseCategories={expenseCategories} onExpenseAdd={(e) => handleAdd(setExpenses, e)} onExpenseUpdate={(e) => handleUpdate(setExpenses, e)} onExpenseDelete={(id) => handleDelete(setExpenses, id)} onForecastUpdate={(f) => handleUpdate(setForecasts, f)} onCategoryAdd={handleAddCategory} onCategoryDelete={handleDeleteCategory}/>;
+            case 'Salary Expenses': return <SalaryExpenses shifts={shifts} employees={employees} />;
+            case 'Revenue': return <RevenueManager residents={residents} rooms={rooms} tenancies={tenancies} onTenancyUpdate={t => handleUpdate(setTenancies, t)} onTenancyAdd={t => handleAdd(setTenancies, t)} />;
+            case 'My Portal': return <MyPortal loggedInEmployee={user.employee!} shifts={shifts} timeOffRequests={timeOffRequests} onTimeOffRequestAdd={(r) => handleAdd(setTimeOffRequests, {...r, status: 'Pending'})} />;
+            case 'Performance Reviews': return <PerformanceReviews loggedInUser={user} reviews={performanceReviews} employees={employees} onReviewCreate={handleCreateReview} onReviewUpdate={handleUpdateReview} />;
+            default: return <h1 className="text-white">Not Implemented</h1>;
+        }
+    };
+    
+    return (
+        <div className="flex h-screen bg-gray-900 text-gray-100">
+            <aside className="w-64 bg-gray-800 p-6 flex flex-col justify-between">
+                <div>
+                    <div className="flex items-center gap-3 mb-8">
+                        <img src={LOGO_BASE64} alt="Logo" className="h-10 w-10 rounded-lg" style={{ filter: 'invert(1)' }} />
+                        <span className="text-xl font-bold">TJM Suite</span>
+                    </div>
+                    <nav className="space-y-2">
+                        {navItems.map(({ name }) => (
+                            <button
+                                key={name}
+                                onClick={() => setView(name)}
+                                className={`w-full text-left px-4 py-2 rounded-md text-lg transition-colors ${view === name ? 'bg-indigo-600 text-white' : 'hover:bg-gray-700'}`}
+                            >
+                                {name}
+                            </button>
+                        ))}
+                    </nav>
+                </div>
+                 <div>
+                    <Button onClick={handleExport} variant="secondary" className="w-full mb-4">Export All Data</Button>
+                    <div className="text-sm text-gray-400 border-t border-gray-700 pt-4">
+                        <p>Logged in as: <span className="font-semibold text-indigo-300">{user.employee?.name || user.role}</span></p>
+                        <button onClick={handleLogout} className="w-full text-left mt-2 font-bold text-red-600 hover:text-red-500">Logout</button>
+                    </div>
+                </div>
+            </aside>
+            <main className="flex-1 p-8 overflow-y-auto">
+                <CurrentView />
+            </main>
+>>>>>>> 1b85027000d2920be8fa6c5c5eab1d4ea1d7cb37
         </div>
     );
 };

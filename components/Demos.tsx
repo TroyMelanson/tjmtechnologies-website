@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 
 const demos = [
+<<<<<<< HEAD
   {
     id: 1,
     title: 'Care Home Suite',
@@ -21,6 +22,10 @@ const demos = [
     solution: 'A secure, cloud-based electronic medication record system built on Azure. It enables real-time, two-way communication, allowing staff to record administrations electronically and pharmacists to manage prescriptions instantly.',
     result: 'Drastically reduced medication errors, improved resident safety, and created a seamless, real-time workflow between the care home and pharmacy, saving time and improving accuracy for both parties.'
   },
+=======
+  { id: 1, title: 'Care Home Suite', imageUrl: 'https://picsum.photos/500/300?random=20', link: 'https://happy-ground-0b886bc10.3.azurestaticapps.net/' },
+  { id: 2, title: 'Digital-MAR', imageUrl: 'https://picsum.photos/500/300?random=21', link: 'https://digitalmar.tjmtechnologies.ca/' },
+>>>>>>> 1b85027000d2920be8fa6c5c5eab1d4ea1d7cb37
 ];
 
 const CaseStudyDetail: React.FC<{title: string, content: string}> = ({ title, content }) => (
