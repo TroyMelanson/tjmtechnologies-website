@@ -36,7 +36,7 @@ const generateInitialSchedule = (employees: Employee[], startDate: Date, numDays
             start.setHours(shiftTime.start, 0, 0, 0);
             const end = new Date(currentDay);
             end.setHours(shiftTime.end, 0, 0, 0);
-            shifts.push({ id: `s${shiftIdCounter++}`, employeeId, start, end });
+            shifts.push({ id: `s_${shiftIdCounter++}`, employeeId, start, end });
         });
         
         // Assign night staff to their 8-hour shift
@@ -46,7 +46,7 @@ const generateInitialSchedule = (employees: Employee[], startDate: Date, numDays
             const end = new Date(currentDay);
             end.setDate(currentDay.getDate() + 1);
             end.setHours(7, 0, 0, 0);
-            shifts.push({ id: `s${shiftIdCounter++}`, employeeId, start, end });
+            shifts.push({ id: `s_${shiftIdCounter++}`, employeeId, start, end });
         });
     }
     return shifts;
@@ -2212,7 +2212,7 @@ const App: FC = () => {
         setter(prev => prev.map(item => item.id === updatedData.id ? updatedData : item));
     };
     const handleDelete = <T extends {id: string}>(setter: React.Dispatch<React.SetStateAction<T[]>>, id: string) => {
-        setter(prev => prev.filter(item => item.id !== id));
+        setter(prev => prev.filter(item => String(item.id) !== String(id)));
     };
     const handleUpdateTimeOffRequest = (id: string, status: 'Approved' | 'Denied') => {
         handleUpdate(setTimeOffRequests, { ...timeOffRequests.find(r => r.id === id)!, status });
